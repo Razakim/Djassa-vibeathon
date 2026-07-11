@@ -40,10 +40,10 @@ export function DriversPage() {
     if (!form.nom) { toast.error("Nom requis"); return }
     if (editId) {
       await update.mutateAsync({ id: editId, ...form })
-      toast.success("Chauffeur mis à jour")
+      toast.success(`${form.nom} mis à jour`)
     } else {
       await create.mutateAsync({ ...form, ponctualite: 90, km: 0, accidents: 0, statut: "disponible" })
-      toast.success("Chauffeur ajouté")
+      toast.success(`${form.nom} ajouté — disponible`)
     }
     setOpen(false)
   }

@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { AlertTriangle, FileWarning, Fuel, MapPin, Route, TrendingDown, TrendingUp, Truck } from "lucide-react"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
@@ -10,6 +11,7 @@ import { formatCurrency } from "@/lib/utils"
 import { MissionStatusBadge } from "@/components/shared/status-badge"
 import { StaggerItem, StaggerList } from "@/components/shared/animated-page"
 import { TransportMap } from "@/components/map/transport-map"
+import { trackingToMapVehicle } from "@/components/map/map-vehicle"
 import { useAlerts, useDashboardStats, useMissions, useTracking } from "@/hooks/use-data"
 
 const MORNING = new Intl.DateTimeFormat("fr-FR", {
@@ -32,15 +34,12 @@ export function DashboardPage() {
 
   const recentMissions = priorityMissions.length > 0 ? priorityMissions : (missions ?? []).slice(0, 4)
 
-  const mapVehicles = (tracking ?? [])
-    .filter((t) => t.missionId)
-    .map((t) => ({
-      id: t.id,
-      label: t.immatriculation,
-      subtitle: `${t.chauffeur} — ${t.vitesse} km/h`,
-      coords: t.coords,
-      missionId: t.missionId,
-    }))
+  const mapVehicles = useMemo(() => {
+    const missionById = new Map((missions ?? []).map((m) => [m.id, m]))
+    return (tracking ?? [])
+      .filter((t) => t.missionId)
+      .map((t) => trackingToMapVehicle(t, missionById.get(t.missionId!)))
+  }, [tracking, missions])
 
   return (
     <div className="space-y-6">
@@ -50,11 +49,11 @@ export function DashboardPage() {
         action={{ label: "Nouvelle mission", onClick: () => navigate("/missions?create=1") }}
       />
 
-      <StaggerList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <StaggerItem>
+      <StaggerList className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <StaggerItem className="min-w-0">
           <StatCard title="Véhicules disponibles" value={String(stats.vehiculesDisponibles)} icon={Truck} />
         </StaggerItem>
-        <StaggerItem>
+        <StaggerItem className="min-w-0">
           <StatCard
             title="Missions en cours"
             value={String(stats.missionsEnCours)}
@@ -62,7 +61,7 @@ export function DashboardPage() {
             trend={{ value: `${stats.missionsEnRetard} en retard`, positive: stats.missionsEnRetard === 0 }}
           />
         </StaggerItem>
-        <StaggerItem>
+        <StaggerItem className="min-w-0">
           <StatCard
             title="Revenus du mois"
             value={formatCurrency(stats.revenusMois)}
@@ -70,7 +69,7 @@ export function DashboardPage() {
             description={`${stats.missionsLivreesMois} mission${stats.missionsLivreesMois > 1 ? "s" : ""} livrée${stats.missionsLivreesMois > 1 ? "s" : ""}`}
           />
         </StaggerItem>
-        <StaggerItem>
+        <StaggerItem className="min-w-0">
           <StatCard
             title="Marge nette"
             value={formatCurrency(marge)}
@@ -78,7 +77,7 @@ export function DashboardPage() {
             trend={{ value: marge >= 0 ? "Positive" : "Négative", positive: marge >= 0 }}
           />
         </StaggerItem>
-        <StaggerItem>
+        <StaggerItem className="min-w-0">
           <StatCard
             title="Carburant"
             value={formatCurrency(stats.carburantMois)}
@@ -86,8 +85,8 @@ export function DashboardPage() {
             description="Ce mois"
           />
         </StaggerItem>
-        <StaggerItem>
-          <button type="button" className="w-full text-left" onClick={() => navigate("/documents")}>
+        <StaggerItem className="min-w-0">
+          <button type="button" className="block h-full w-full min-w-0 text-left" onClick={() => navigate("/documents")}>
             <StatCard
               title="Docs à renouveler"
               value={String(stats.documentsExpirant)}
@@ -177,7 +176,7 @@ export function DashboardPage() {
               <button
                 key={m.id}
                 type="button"
-                onClick={() => navigate("/missions")}
+                onClick={() => navigate(`/tracking?mission=${m.id}`)}
                 className="flex w-full items-center justify-between rounded-lg border p-3 text-left hover:bg-muted/30 transition-colors"
               >
                 <div>
@@ -206,10 +205,15 @@ export function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <TransportMap
-              height={220}
+              height={240}
               zoom={6}
               missions={(missions ?? []).filter((m) => m.statut !== "livree" && m.statut !== "annulee")}
               vehicles={mapVehicles}
+              showLegend={false}
+              showControls={false}
+              showDetailPanel={false}
+              showCities={false}
+              onMissionSelect={(id) => id && navigate(`/tracking?mission=${id}`)}
             />
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div className="flex justify-between rounded-md border px-3 py-2">

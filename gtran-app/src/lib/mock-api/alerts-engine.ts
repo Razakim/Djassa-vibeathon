@@ -8,6 +8,10 @@ function daysUntil(dateStr: string): number {
   return Math.ceil((exp.getTime() - now.getTime()) / MS_PER_DAY)
 }
 
+function daysSince(dateStr: string): number {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / MS_PER_DAY)
+}
+
 export function computeAlerts(store: AppStore, agenceId?: string): Alert[] {
   const alerts: Alert[] = []
   const scope = <T extends { agenceId: string }>(items: T[]) =>
@@ -86,15 +90,28 @@ export function computeAlerts(store: AppStore, agenceId?: string): Alert[] {
 
   for (const vehicle of scope(store.vehicles)) {
     if (vehicle.statut === "immobilise") {
-      alerts.push({
-        id: `alert-veh-${vehicle.id}`,
-        type: "maintenance",
-        message: `${vehicle.immatriculation} immobilisé — vérifier disponibilité`,
-        severity: "warning",
-        agenceId: vehicle.agenceId,
-        entityId: vehicle.id,
-        href: "/fleet",
-      })
+      const days = vehicle.immobiliseDepuis ? daysSince(vehicle.immobiliseDepuis) : 0
+      if (days >= 3) {
+        alerts.push({
+          id: `alert-immob-${vehicle.id}`,
+          type: "flotte",
+          message: `${vehicle.immatriculation} immobilisé depuis ${days} jour${days > 1 ? "s" : ""} — action requise`,
+          severity: "danger",
+          agenceId: vehicle.agenceId,
+          entityId: vehicle.id,
+          href: "/fleet",
+        })
+      } else {
+        alerts.push({
+          id: `alert-veh-${vehicle.id}`,
+          type: "maintenance",
+          message: `${vehicle.immatriculation} immobilisé — vérifier disponibilité`,
+          severity: "warning",
+          agenceId: vehicle.agenceId,
+          entityId: vehicle.id,
+          href: "/fleet",
+        })
+      }
     }
   }
 

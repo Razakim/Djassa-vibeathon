@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sparkles } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,7 @@ import { formatCurrency } from "@/lib/utils"
 import type { Driver, Vehicle } from "@/types/entities"
 import { cn } from "@/lib/utils"
 
-const CITIES = ["Abidjan", "Bouaké", "San Pedro", "Yamoussoukro", "Dakar", "Ferkessédougou"]
+const CITIES = ["Abidjan", "Bouaké", "San Pedro", "Yamoussoukro", "Dakar", "Ferkessédougou", "Bamako"]
 
 const STEPS = ["Client & trajet", "Marchandise", "Assignation", "Récapitulatif"]
 
@@ -50,6 +50,7 @@ interface MissionWizardDialogProps {
   drivers: Driver[]
   vehicles: Vehicle[]
   loading?: boolean
+  initialData?: Partial<MissionFormData>
   onSubmit: (data: MissionFormData) => Promise<void>
 }
 
@@ -59,10 +60,22 @@ export function MissionWizardDialog({
   drivers,
   vehicles,
   loading,
+  initialData,
   onSubmit,
 }: MissionWizardDialogProps) {
   const [step, setStep] = useState(0)
   const [form, setForm] = useState<MissionFormData>(INITIAL)
+
+  useEffect(() => {
+    if (open && initialData) {
+      setForm({ ...INITIAL, ...initialData })
+      setStep(0)
+    }
+    if (open && !initialData) {
+      setForm(INITIAL)
+      setStep(0)
+    }
+  }, [open, initialData])
 
   const availableDrivers = drivers.filter((d) => d.statut === "disponible")
   const availableVehicles = vehicles.filter((v) => v.statut === "disponible")

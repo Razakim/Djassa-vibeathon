@@ -50,10 +50,10 @@ export function FleetPage() {
     if (!form.immatriculation) { toast.error("Immatriculation requise"); return }
     if (editId) {
       await update.mutateAsync({ id: editId, ...form, chauffeur: null, driverId: null, disponibilite: form.statut === "disponible" ? 100 : 0 })
-      toast.success("Véhicule mis à jour")
+      toast.success(`${form.immatriculation} mis à jour`)
     } else {
       await create.mutateAsync({ ...form, chauffeur: null, driverId: null, disponibilite: 100 })
-      toast.success("Véhicule ajouté")
+      toast.success(`${form.immatriculation} ajouté à la flotte`)
     }
     setDialogOpen(false)
   }

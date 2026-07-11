@@ -9,6 +9,7 @@ import { useDashboardStats, useMissions, useFuelRecords } from "@/hooks/use-data
 import { formatCurrency } from "@/lib/utils"
 import { downloadCSV } from "@/lib/export"
 import { computeMissionProfit } from "@/lib/mission-profit"
+import { getCurrentMonthKey } from "@/lib/dashboard-stats"
 import { MissionStatusBadge } from "@/components/shared/status-badge"
 
 export function AccountingPage() {
@@ -17,8 +18,11 @@ export function AccountingPage() {
   const { data: fuel } = useFuelRecords()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const marge = stats.revenusMois - stats.depensesMois
+  const monthKey = getCurrentMonthKey()
 
-  const livrees = (missions ?? []).filter((m) => m.statut === "livree")
+  const livrees = (missions ?? []).filter(
+    (m) => m.statut === "livree" && (!m.createdAt || m.createdAt.slice(0, 7) === monthKey)
+  )
 
   const expenses = [
     { categorie: "Carburant", montant: stats.carburantMois },

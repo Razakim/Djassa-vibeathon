@@ -13,6 +13,7 @@ export interface Vehicle {
   disponibilite: number
   agenceId: string
   position?: LatLng
+  immobiliseDepuis?: string
 }
 
 export interface Driver {
@@ -145,6 +146,9 @@ export interface TrackingVehicle {
   statut: string
   arret: string
   coords: LatLng
+  heading?: number
+  vehicleType?: string
+  missionStatut?: string
   missionId?: string
   vehicleId?: string
   driverId?: string

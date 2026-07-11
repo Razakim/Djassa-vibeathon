@@ -1,4 +1,4 @@
-import { getCityCoords, interpolateRoute } from "@/lib/geo/cities"
+import { getCityCoords, getRouteBearing, interpolateRoute } from "@/lib/geo/cities"
 import type { AppStore, Mission, TrackingVehicle, Vehicle } from "@/types/entities"
 
 function missionPosition(mission: Mission): [number, number] {
@@ -29,7 +29,16 @@ function vitesseFor(mission: Mission): number {
   return 55 + Math.round(mission.progress * 30)
 }
 
-function fromMission(mission: Mission): TrackingVehicle {
+function headingFor(mission: Mission): number {
+  if (mission.statut === "planifiee" || mission.route.length < 2) return 0
+  return getRouteBearing(mission.route, Math.max(mission.progress, 0.01))
+}
+
+function vehicleTypeFor(store: AppStore, vehicleId: string): string | undefined {
+  return store.vehicles.find((v) => v.id === vehicleId)?.type
+}
+
+function fromMission(store: AppStore, mission: Mission): TrackingVehicle {
   const coords = missionPosition(mission)
   return {
     id: `track-${mission.id}`,
@@ -40,6 +49,9 @@ function fromMission(mission: Mission): TrackingVehicle {
     statut: trackingStatut(mission),
     arret: mission.statut === "en_retard" ? "2h30" : mission.progress < 0.1 ? "15 min" : "—",
     coords,
+    heading: headingFor(mission),
+    vehicleType: vehicleTypeFor(store, mission.vehicleId),
+    missionStatut: mission.statut,
     missionId: mission.id,
     vehicleId: mission.vehicleId,
     driverId: mission.driverId,
@@ -58,6 +70,8 @@ function idleVehicle(v: Vehicle): TrackingVehicle | null {
     statut: v.statut === "disponible" ? "disponible" : "arret",
     arret: "—",
     coords,
+    heading: 0,
+    vehicleType: v.type,
     vehicleId: v.id,
     driverId: v.driverId,
   }
@@ -75,7 +89,7 @@ export function deriveTracking(store: AppStore, agenceId?: string): TrackingVehi
 
   const fromMissions = missions
     .filter((m) => m.statut !== "annulee" && m.statut !== "livree")
-    .map((m) => fromMission(m))
+    .map((m) => fromMission(store, m))
 
   const fromIdle = vehicles
     .filter((v) => !activeMissionVehicleIds.has(v.id) && v.statut !== "en_mission")

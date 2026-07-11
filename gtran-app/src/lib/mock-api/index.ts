@@ -129,7 +129,12 @@ export async function transitionMission(id: string, statut: MissionStatus) {
   return result
 }
 
-export const updateMission = (id: string, patch: Partial<Mission>) => update("missions", id, patch)
+export async function updateMission(id: string, patch: Partial<Mission>) {
+  if (patch.statut !== undefined) {
+    throw new Error("Utilisez transitionMission pour changer le statut d'une mission")
+  }
+  return update("missions", id, patch)
+}
 
 export async function deleteMission(id: string) {
   await simulateDelay()

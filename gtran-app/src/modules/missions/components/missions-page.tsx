@@ -8,11 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { TransportMap } from "@/components/map/transport-map"
+import { trackingToMapVehicle } from "@/components/map/map-vehicle"
 import { MissionWizardDialog, type MissionFormData } from "@/components/missions/mission-wizard-dialog"
 import { MissionStatusBadge } from "@/components/shared/status-badge"
 import { formatCurrency } from "@/lib/utils"
-import { useMissions, useMissionMutations, useDrivers, useVehicles } from "@/hooks/use-data"
-import { interpolateRoute } from "@/lib/geo/cities"
+import { useMissions, useMissionMutations, useDrivers, useVehicles, useTracking } from "@/hooks/use-data"
 import type { MissionStatus } from "@/types/shared"
 import { Search, Trash2, Play, CheckCircle, XCircle } from "lucide-react"
 
@@ -22,14 +22,26 @@ export function MissionsPage() {
   const { data: missions, isLoading } = useMissions()
   const { data: drivers } = useDrivers()
   const { data: vehicles } = useVehicles()
+  const { data: tracking } = useTracking()
   const { create, transition, remove } = useMissionMutations()
   const [search, setSearch] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [prefill, setPrefill] = useState<Partial<MissionFormData> | undefined>()
 
   useEffect(() => {
     if (searchParams.get("create") === "1") {
+      const data: Partial<MissionFormData> = {}
+      const client = searchParams.get("client")
+      const depart = searchParams.get("depart")
+      const destination = searchParams.get("destination")
+      const marchandise = searchParams.get("marchandise")
+      if (client) data.client = client
+      if (depart) data.depart = depart
+      if (destination) data.destination = destination
+      if (marchandise) data.marchandise = marchandise
+      setPrefill(Object.keys(data).length > 0 ? data : undefined)
       setDialogOpen(true)
       setSearchParams({}, { replace: true })
     }
@@ -42,19 +54,16 @@ export function MissionsPage() {
     )
   }, [missions, search])
 
-  const mapVehicles = useMemo(
-    () =>
-      (missions ?? [])
-        .filter((m) => m.statut === "en_cours" || m.statut === "en_retard")
-        .map((m) => ({
-          id: m.id,
-          label: m.vehicule,
-          subtitle: m.chauffeur,
-          coords: interpolateRoute(m.route, m.progress),
-          missionId: m.id,
-        })),
-    [missions]
-  )
+  const mapVehicles = useMemo(() => {
+    const missionById = new Map((missions ?? []).map((m) => [m.id, m]))
+    return (tracking ?? [])
+      .filter((t) => t.missionId && missionById.has(t.missionId))
+      .filter((t) => {
+        const m = missionById.get(t.missionId!)!
+        return m.statut === "en_cours" || m.statut === "en_retard" || m.statut === "planifiee"
+      })
+      .map((t) => trackingToMapVehicle(t, missionById.get(t.missionId!)))
+  }, [tracking, missions])
 
   const handleCreate = async (form: MissionFormData) => {
     try {
@@ -127,11 +136,14 @@ export function MissionsPage() {
       </div>
 
       <TransportMap
-        height={300}
+        height={340}
         missions={missions ?? []}
         vehicles={mapVehicles}
         selectedMissionId={selectedId}
         onMissionSelect={setSelectedId}
+        showCities
+        showControls
+        onOpenMission={() => navigate("/missions")}
       />
 
       <Card>
@@ -195,6 +207,7 @@ export function MissionsPage() {
         drivers={drivers ?? []}
         vehicles={vehicles ?? []}
         loading={create.isPending}
+        initialData={prefill}
         onSubmit={handleCreate}
       />
 

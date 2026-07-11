@@ -25,6 +25,7 @@ export interface MissionTransitionResult {
 }
 
 const ACTIVE_MISSION_STATUSES: MissionStatus[] = ["planifiee", "en_cours", "en_retard"]
+const LOCKED_RESOURCE_STATUSES: MissionStatus[] = ["planifiee", "en_cours", "en_retard"]
 
 function isDriverBusy(store: AppStore, driverId: string, excludeMissionId?: string): boolean {
   return store.missions.some(
@@ -78,7 +79,7 @@ function syncResourceLocks(store: AppStore): AppStore {
   const lockedVehicleIds = new Set<string>()
 
   for (const m of store.missions) {
-    if (m.statut === "en_cours" || m.statut === "en_retard") {
+    if (LOCKED_RESOURCE_STATUSES.includes(m.statut)) {
       lockedDriverIds.add(m.driverId)
       lockedVehicleIds.add(m.vehicleId)
     }
@@ -93,7 +94,7 @@ function syncResourceLocks(store: AppStore): AppStore {
   const vehicles = store.vehicles.map((v) => {
     if (lockedVehicleIds.has(v.id)) {
       const mission = store.missions.find(
-        (m) => m.vehicleId === v.id && (m.statut === "en_cours" || m.statut === "en_retard")
+        (m) => m.vehicleId === v.id && LOCKED_RESOURCE_STATUSES.includes(m.statut)
       )
       const driver = mission ? store.drivers.find((d) => d.id === mission.driverId) : null
       return {

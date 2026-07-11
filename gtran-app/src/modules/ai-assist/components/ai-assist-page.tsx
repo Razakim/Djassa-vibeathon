@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Bot, Mic, Send } from "lucide-react"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/shared/page-header"
@@ -24,6 +25,7 @@ const initialMessages: Message[] = [
 ]
 
 export function AiAssistPage() {
+  const navigate = useNavigate()
   const { agenceId } = useTenant()
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState("")
@@ -45,10 +47,19 @@ export function AiAssistPage() {
     setListening(true)
     toast.message("Dictée simulée", { description: "Transcription en cours..." })
     setTimeout(() => {
-      const phrase = "Quels clients paient systématiquement en retard ?"
+      const phrase = "Nouvelle mission client Nestlé CI de Abidjan à Bouaké cacao 20 tonnes"
       setInput(phrase)
       setListening(false)
-      toast.success("Transcription terminée")
+      toast.success("Transcription terminée", {
+        description: "Mission pré-remplie — ouvrir le formulaire ?",
+        action: {
+          label: "Créer la mission",
+          onClick: () =>
+            navigate(
+              "/missions?create=1&client=Nestlé CI&depart=Abidjan&destination=Bouaké&marchandise=Cacao"
+            ),
+        },
+      })
     }, 1200)
   }
 

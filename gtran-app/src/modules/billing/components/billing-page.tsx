@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/shared/page-header"
 import { Card, CardContent } from "@/components/ui/card"
@@ -14,6 +15,7 @@ import { PaymentStatusBadge } from "@/components/shared/status-badge"
 import type { PaymentStatus } from "@/types/shared"
 
 export function BillingPage() {
+  const navigate = useNavigate()
   const { data: invoices } = useInvoices()
   const { create, update, sendReminder } = useInvoiceMutations()
   const [open, setOpen] = useState(false)
@@ -23,19 +25,21 @@ export function BillingPage() {
 
   const handleCreate = async () => {
     if (!form.client) return
-    await create.mutateAsync({ ...form, statut: "en_attente" })
-    toast.success("Facture créée")
+    const invoice = await create.mutateAsync({ ...form, statut: "en_attente" })
+    toast.success(`Facture ${invoice.id} créée`, {
+      description: `${form.client} — ${formatCurrency(form.montant)}`,
+    })
     setOpen(false)
   }
 
   const handleReminder = async (id: string, client: string) => {
     await sendReminder.mutateAsync(id)
-    toast.success(`Relance envoyée à ${client}`)
+    toast.success(`Relance envoyée — ${client}`, { description: `Facture ${id}` })
   }
 
-  const markPaid = async (id: string) => {
+  const markPaid = async (id: string, client: string) => {
     await update.mutateAsync({ id, statut: "paye" as PaymentStatus })
-    toast.success("Facture marquée payée")
+    toast.success(`Facture ${id} payée`, { description: client })
   }
 
   return (
@@ -56,6 +60,7 @@ export function BillingPage() {
                   <TableRow>
                     <TableHead>N°</TableHead>
                     <TableHead>Client</TableHead>
+                    <TableHead>Mission</TableHead>
                     <TableHead>Montant</TableHead>
                     <TableHead>Échéance</TableHead>
                     <TableHead>Statut</TableHead>
@@ -67,12 +72,25 @@ export function BillingPage() {
                     <TableRow key={inv.id}>
                       <TableCell className="font-mono">{inv.id}</TableCell>
                       <TableCell>{inv.client}</TableCell>
+                      <TableCell>
+                        {inv.missionId ? (
+                          <Button
+                            variant="link"
+                            className="h-auto p-0 font-mono text-xs"
+                            onClick={() => navigate(`/missions`)}
+                          >
+                            {inv.missionId}
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>{formatCurrency(inv.montant)}</TableCell>
                       <TableCell>{formatDate(inv.echeance)}</TableCell>
                       <TableCell><PaymentStatusBadge status={inv.statut} /></TableCell>
                       <TableCell>
                         {inv.statut !== "paye" && (
-                          <Button size="sm" variant="ghost" onClick={() => markPaid(inv.id)}>Marquer payée</Button>
+                          <Button size="sm" variant="ghost" onClick={() => markPaid(inv.id, inv.client)}>Marquer payée</Button>
                         )}
                       </TableCell>
                     </TableRow>

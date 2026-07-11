@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useSearchParams, useNavigate } from "react-router-dom"
 import { Navigation, MapPin, Route } from "lucide-react"
 import { motion } from "motion/react"
 import { PageHeader } from "@/components/shared/page-header"
@@ -7,8 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { TransportMap, STATUS_COLORS } from "@/components/map/transport-map"
+import { trackingToMapVehicle } from "@/components/map/map-vehicle"
 import { useMissions, useTracking } from "@/hooks/use-data"
-import { interpolateRoute } from "@/lib/geo/cities"
+import { formatCoords, formatDistance, formatEta, estimateEtaMinutes } from "@/lib/geo/distance"
+import { getRemainingDistanceKm } from "@/lib/geo/cities"
 import type { MissionStatus } from "@/types/shared"
 import { cn } from "@/lib/utils"
 
@@ -20,6 +22,7 @@ const STATUS_OPTIONS: { value: MissionStatus; label: string }[] = [
 ]
 
 export function TrackingPage() {
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { data: missions } = useMissions()
   const { data: tracking } = useTracking()
@@ -41,18 +44,10 @@ export function TrackingPage() {
     [missions, statusFilter]
   )
 
-  const mapVehicles = useMemo(
-    () =>
-      (tracking ?? []).map((t) => ({
-        id: t.id,
-        label: t.immatriculation,
-        subtitle: `${t.chauffeur} — ${t.position}`,
-        coords: t.coords,
-        color: t.statut === "en_route" ? STATUS_COLORS.en_cours : t.statut === "arret" ? "#f59e0b" : STATUS_COLORS.planifiee,
-        missionId: t.missionId,
-      })),
-    [tracking]
-  )
+  const mapVehicles = useMemo(() => {
+    const missionById = new Map((missions ?? []).map((m) => [m.id, m]))
+    return (tracking ?? []).map((t) => trackingToMapVehicle(t, t.missionId ? missionById.get(t.missionId) : undefined))
+  }, [tracking, missions])
 
   const toggleStatus = (s: MissionStatus) => {
     setStatusFilter((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]))
@@ -95,14 +90,18 @@ export function TrackingPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2 p-0 overflow-hidden">
           <TransportMap
-            height={480}
+            height={520}
             zoom={6}
             missions={activeMissions}
             vehicles={mapVehicles}
             selectedMissionId={selectedMissionId}
             onMissionSelect={setSelectedMissionId}
+            onOpenMission={() => navigate("/missions")}
             showRoutes={showRoutes}
             showCities={showCities}
+            showControls
+            showDetailPanel
+            autoFitOnLoad
             statusFilter={statusFilter}
           />
         </Card>
@@ -144,19 +143,27 @@ export function TrackingPage() {
       {selectedMissionId && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
           <Card>
-            <CardContent className="pt-4 flex flex-wrap gap-4 text-sm">
+            <CardContent className="pt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
               {(() => {
                 const m = missions?.find((x) => x.id === selectedMissionId)
+                const t = tracking?.find((x) => x.missionId === selectedMissionId)
                 if (!m) return null
-                const pos = interpolateRoute(m.route, m.progress)
+                const remaining = getRemainingDistanceKm(m.route, m.progress)
+                const eta = estimateEtaMinutes(remaining, t?.vitesse ?? 0)
                 return (
                   <>
                     <span><strong>Mission :</strong> {m.id}</span>
                     <span><strong>Trajet :</strong> {m.depart} → {m.destination}</span>
+                    <span><strong>Client :</strong> {m.client}</span>
                     <span><strong>Progression :</strong> {Math.round(m.progress * 100)}%</span>
-                    <span><strong>Position :</strong> {pos[0].toFixed(4)}, {pos[1].toFixed(4)}</span>
+                    <span><strong>Restant :</strong> {formatDistance(remaining)}</span>
+                    <span><strong>ETA :</strong> {formatEta(eta)}</span>
+                    <span><strong>GPS :</strong> {formatCoords(t?.coords ?? m.route[0])}</span>
                     <span><strong>Chauffeur :</strong> {m.chauffeur}</span>
                     <span><strong>Véhicule :</strong> {m.vehicule}</span>
+                    <Button size="sm" variant="outline" onClick={() => navigate("/missions")}>
+                      Fiche mission
+                    </Button>
                   </>
                 )
               })()}

@@ -1,5 +1,6 @@
 import { motion } from "motion/react"
 import type { ReactNode } from "react"
+import { cn } from "@/lib/utils"
 
 export function AnimatedPage({ children }: { children: ReactNode }) {
   return (
@@ -33,7 +34,7 @@ export function StaggerList({ children, className }: { children: ReactNode; clas
 export function StaggerItem({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <motion.div
-      className={className}
+      className={cn("min-w-0", className)}
       variants={{
         hidden: { opacity: 0, y: 10 },
         visible: { opacity: 1, y: 0 },

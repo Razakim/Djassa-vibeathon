@@ -1,9 +1,25 @@
-import { useEffect, useMemo } from "react"
-import { MapContainer, TileLayer, Polyline, Marker, Popup, CircleMarker, useMap } from "react-leaflet"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { MapContainer, TileLayer, Polyline, Marker, Popup, Tooltip, useMap } from "react-leaflet"
 import L from "leaflet"
+import { Crosshair, Maximize2, Navigation } from "lucide-react"
 import type { LatLng } from "@/lib/geo/cities"
+import {
+  getCityMeta,
+  getHubCities,
+  getRemainingDistanceKm,
+  interpolateRoute,
+  routeLengthKm,
+} from "@/lib/geo/cities"
+import {
+  estimateEtaMinutes,
+  formatCoords,
+  formatDistance,
+  formatEta,
+} from "@/lib/geo/distance"
 import type { Mission } from "@/types/entities"
 import type { MissionStatus } from "@/types/shared"
+import { Button } from "@/components/ui/button"
+import { createCityLabelIcon, createEndpointIcon, createProgressDot, createTruckIcon } from "./map-icons"
 import "leaflet/dist/leaflet.css"
 import "./map.css"
 
@@ -14,6 +30,16 @@ export interface MapVehicle {
   subtitle?: string
   color?: string
   missionId?: string
+  heading?: number
+  speed?: number
+  driver?: string
+  client?: string
+  missionRef?: string
+  progress?: number
+  status?: string
+  vehicleType?: string
+  positionLabel?: string
+  idle?: boolean
 }
 
 interface TransportMapProps {
@@ -24,10 +50,14 @@ interface TransportMapProps {
   vehicles?: MapVehicle[]
   selectedMissionId?: string | null
   onMissionSelect?: (id: string | null) => void
+  onOpenMission?: (missionId: string) => void
   showRoutes?: boolean
   showVehicles?: boolean
   showCities?: boolean
   showLegend?: boolean
+  showControls?: boolean
+  showDetailPanel?: boolean
+  autoFitOnLoad?: boolean
   statusFilter?: MissionStatus[]
   theme?: "light" | "dark"
   className?: string
@@ -50,28 +80,8 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const TILES = {
-  light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+  light: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
   dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-}
-
-const TRUCK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>`
-
-function createTruckIcon(color: string, selected = false) {
-  return L.divIcon({
-    html: `<div class="truck-marker${selected ? " truck-marker--selected" : ""}" style="--color: ${color}">${TRUCK_SVG}</div>`,
-    className: "",
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-  })
-}
-
-function createCityIcon() {
-  return L.divIcon({
-    html: `<div class="city-marker"></div>`,
-    className: "",
-    iconSize: [10, 10],
-    iconAnchor: [5, 5],
-  })
 }
 
 function MapResizer() {
@@ -83,11 +93,28 @@ function MapResizer() {
   return null
 }
 
-function FlyTo({ center, zoom }: { center: LatLng; zoom: number }) {
+function FitBoundsOnDemand({
+  bounds,
+  trigger,
+}: {
+  bounds: L.LatLngBoundsExpression | null
+  trigger: number
+}) {
   const map = useMap()
   useEffect(() => {
-    map.flyTo(center, zoom, { duration: 0.8 })
-  }, [map, center, zoom])
+    if (trigger > 0 && bounds) {
+      map.fitBounds(bounds, { padding: [48, 48], maxZoom: 10 })
+    }
+  }, [map, bounds, trigger])
+  return null
+}
+
+function FlyToSelection({ target }: { target: { center: LatLng; zoom: number } | null }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!target) return
+    map.flyTo(target.center, target.zoom, { duration: 0.9 })
+  }, [map, target])
   return null
 }
 
@@ -106,62 +133,122 @@ export function TransportMap({
   vehicles = [],
   selectedMissionId,
   onMissionSelect,
+  onOpenMission,
   showRoutes = true,
   showVehicles = true,
   showCities = false,
   showLegend = true,
+  showControls = true,
+  showDetailPanel = true,
+  autoFitOnLoad = false,
   statusFilter,
   theme = "light",
   className = "",
 }: TransportMapProps) {
+  const markerRefs = useRef<Record<string, L.Marker>>({})
+  const [fitTrigger, setFitTrigger] = useState(autoFitOnLoad ? 1 : 0)
+
   const filteredMissions = useMemo(
     () => (statusFilter?.length ? missions.filter((m) => statusFilter.includes(m.statut)) : missions),
     [missions, statusFilter]
   )
 
+  const selectedMission = useMemo(
+    () => missions.find((m) => m.id === selectedMissionId),
+    [missions, selectedMissionId]
+  )
+
+  const selectedVehicle = useMemo(
+    () => vehicles.find((v) => v.missionId === selectedMissionId),
+    [vehicles, selectedMissionId]
+  )
+
   const cityMarkers = useMemo(() => {
     if (!showCities) return []
     const seen = new Set<string>()
-    const markers: { key: string; name: string; coords: LatLng }[] = []
+    const markers: { key: string; name: string; countryCode: string; coords: LatLng; hub: boolean }[] = []
+
+    const addCity = (name: string) => {
+      if (seen.has(name)) return
+      seen.add(name)
+      const meta = getCityMeta(name)
+      markers.push({
+        key: name,
+        name: meta.name,
+        countryCode: meta.countryCode,
+        coords: meta.coords,
+        hub: !!meta.hub,
+      })
+    }
+
     for (const m of filteredMissions) {
-      for (const [name, coords] of [
-        [m.depart, m.route[0]] as const,
-        [m.destination, m.route[m.route.length - 1]] as const,
-      ]) {
-        if (!seen.has(name)) {
-          seen.add(name)
-          markers.push({ key: name, name, coords })
-        }
-      }
+      addCity(m.depart)
+      addCity(m.destination)
+    }
+    if (markers.length < 3) {
+      getHubCities().forEach((c) => addCity(c.name))
     }
     return markers
   }, [filteredMissions, showCities])
+
+  const bounds = useMemo(() => {
+    const points: LatLng[] = []
+    filteredMissions.forEach((m) => points.push(...m.route))
+    vehicles.forEach((v) => points.push(v.coords))
+    if (points.length === 0) return null
+    return L.latLngBounds(points)
+  }, [filteredMissions, vehicles])
 
   const flyTarget = useMemo(() => {
     if (!selectedMissionId) return null
     const mission = missions.find((m) => m.id === selectedMissionId)
     if (!mission?.route?.length) return null
-    const mid = mission.route[Math.floor(mission.route.length / 2)]
-    return { center: mid, zoom: 8 }
-  }, [selectedMissionId, missions])
+    const pos = selectedVehicle?.coords ?? interpolateRoute(mission.route, mission.progress)
+    return { center: pos, zoom: 9 }
+  }, [selectedMissionId, missions, selectedVehicle])
 
   const activeStatuses = useMemo(() => {
     const set = new Set(filteredMissions.map((m) => m.statut))
     return Array.from(set)
   }, [filteredMissions])
 
+  const openSelectedPopup = useCallback(() => {
+    if (!selectedMissionId) return
+    const key = vehicles.find((v) => v.missionId === selectedMissionId)?.id ?? selectedMissionId
+    markerRefs.current[key]?.openPopup()
+  }, [selectedMissionId, vehicles])
+
+  useEffect(() => {
+    if (selectedMissionId) {
+      const t = setTimeout(openSelectedPopup, 400)
+      return () => clearTimeout(t)
+    }
+  }, [selectedMissionId, openSelectedPopup])
+
+  const handleFitAll = useCallback(() => {
+    setFitTrigger((n) => n + 1)
+  }, [])
+
   return (
     <div className={`gtran-map relative overflow-hidden rounded-lg border ${className}`} style={{ height }}>
       <MapContainer center={center} zoom={zoom} className="size-full" scrollWheelZoom>
         <MapResizer />
-        {flyTarget && <FlyTo center={flyTarget.center} zoom={flyTarget.zoom} />}
-        <TileLayer attribution='&copy; <a href="https://carto.com/">CARTO</a>' url={TILES[theme]} />
+        <FitBoundsOnDemand bounds={bounds} trigger={fitTrigger} />
+        {flyTarget && <FlyToSelection target={flyTarget} />}
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
+          url={TILES[theme]}
+        />
 
         {showRoutes &&
           filteredMissions.map((mission) => {
             const color = STATUS_COLORS[mission.statut] ?? "#3b82f6"
             const isSelected = mission.id === selectedMissionId
             const [done, remaining] = sliceRoute(mission.route, mission.progress)
+            const totalKm = routeLengthKm(mission.route)
+            const remainingKm = getRemainingDistanceKm(mission.route, mission.progress)
+            const speed = selectedVehicle?.speed ?? (mission.statut === "en_cours" ? 65 : 0)
+            const eta = estimateEtaMinutes(remainingKm, speed)
 
             return (
               <span key={mission.id}>
@@ -169,10 +256,11 @@ export function TransportMap({
                   <Polyline
                     positions={remaining}
                     pathOptions={{
-                      color: "#94a3b8",
-                      weight: isSelected ? 4 : 2,
-                      opacity: isSelected ? 0.6 : 0.35,
-                      dashArray: "6 10",
+                      color: "#64748b",
+                      weight: isSelected ? 5 : 3,
+                      opacity: isSelected ? 0.55 : 0.3,
+                      dashArray: "8 12",
+                      lineCap: "round",
                     }}
                     eventHandlers={{ click: () => onMissionSelect?.(mission.id) }}
                   />
@@ -182,79 +270,182 @@ export function TransportMap({
                     positions={done}
                     pathOptions={{
                       color,
-                      weight: isSelected ? 6 : 4,
-                      opacity: isSelected ? 1 : 0.85,
+                      weight: isSelected ? 7 : 5,
+                      opacity: isSelected ? 1 : 0.88,
+                      lineCap: "round",
                     }}
                     eventHandlers={{ click: () => onMissionSelect?.(mission.id) }}
-                  >
-                    <Popup>
-                      <MapPopup mission={mission} />
-                    </Popup>
-                  </Polyline>
+                  />
                 )}
                 {mission.statut === "planifiee" && (
                   <Polyline
                     positions={mission.route}
                     pathOptions={{
                       color,
-                      weight: isSelected ? 5 : 3,
-                      opacity: isSelected ? 1 : 0.7,
-                      dashArray: "8 8",
+                      weight: isSelected ? 6 : 4,
+                      opacity: isSelected ? 0.9 : 0.55,
+                      dashArray: "10 10",
+                      lineCap: "round",
                     }}
                     eventHandlers={{ click: () => onMissionSelect?.(mission.id) }}
-                  >
-                    <Popup>
-                      <MapPopup mission={mission} />
-                    </Popup>
-                  </Polyline>
+                  />
                 )}
-                <CircleMarker
-                  center={mission.route[0]}
-                  radius={isSelected ? 7 : 5}
-                  pathOptions={{ color, fillColor: color, fillOpacity: 0.9, weight: 2 }}
+
+                <Marker
+                  position={mission.route[0]}
+                  icon={createEndpointIcon("depart", mission.depart)}
                   eventHandlers={{ click: () => onMissionSelect?.(mission.id) }}
                 />
-                <CircleMarker
-                  center={mission.route[mission.route.length - 1]}
-                  radius={isSelected ? 7 : 5}
-                  pathOptions={{ color, fillColor: "#fff", fillOpacity: 1, weight: 2 }}
+                <Marker
+                  position={mission.route[mission.route.length - 1]}
+                  icon={createEndpointIcon("arrivee", mission.destination)}
                   eventHandlers={{ click: () => onMissionSelect?.(mission.id) }}
                 />
+
+                {mission.statut !== "planifiee" && mission.progress > 0 && mission.progress < 1 && (
+                  <Marker
+                    position={interpolateRoute(mission.route, mission.progress)}
+                    icon={createProgressDot(color)}
+                    zIndexOffset={500}
+                  />
+                )}
+
+                {isSelected && (
+                  <Popup position={interpolateRoute(mission.route, Math.max(mission.progress, 0))}>
+                    <MissionPopup
+                      mission={mission}
+                      totalKm={totalKm}
+                      remainingKm={remainingKm}
+                      eta={eta}
+                      onOpen={() => onOpenMission?.(mission.id)}
+                    />
+                  </Popup>
+                )}
               </span>
             )
           })}
 
         {showCities &&
           cityMarkers.map((c) => (
-            <Marker key={c.key} position={c.coords} icon={createCityIcon()}>
-              <Popup>
-                <p className="text-sm font-semibold">{c.name}</p>
-              </Popup>
+            <Marker
+              key={c.key}
+              position={c.coords}
+              icon={createCityLabelIcon(c.name, c.countryCode, c.hub ? "hub" : "stop")}
+              zIndexOffset={-100}
+            >
+              <Tooltip direction="top" offset={[0, -4]} opacity={0.95} permanent={false}>
+                <div className="map-tooltip-city">
+                  <strong>{c.name}</strong>
+                  <span>{getCityMeta(c.name).country}</span>
+                </div>
+              </Tooltip>
             </Marker>
           ))}
 
         {showVehicles &&
           vehicles.map((v) => {
             const selected = v.missionId === selectedMissionId
+            const mission = missions.find((m) => m.id === v.missionId)
             return (
               <Marker
                 key={v.id}
                 position={v.coords}
-                icon={createTruckIcon(v.color ?? STATUS_COLORS.en_cours, selected)}
+                icon={createTruckIcon({
+                  color: v.color ?? STATUS_COLORS.en_cours,
+                  heading: v.heading,
+                  selected,
+                  speed: v.speed,
+                  plate: v.label,
+                  status: v.status,
+                  vehicleType: v.vehicleType,
+                })}
+                zIndexOffset={selected ? 1000 : 100}
+                ref={(ref) => {
+                  if (ref) markerRefs.current[v.id] = ref
+                }}
                 eventHandlers={{
-                  click: () => v.missionId && onMissionSelect?.(v.missionId),
+                  click: () => {
+                    if (v.missionId) onMissionSelect?.(v.missionId)
+                    else onMissionSelect?.(null)
+                  },
                 }}
               >
-                <Popup>
-                  <div className="space-y-1 text-sm">
-                    <p className="font-bold font-mono">{v.label}</p>
-                    {v.subtitle && <p>{v.subtitle}</p>}
-                  </div>
+                <Popup minWidth={240} maxWidth={300}>
+                  <VehiclePopup vehicle={v} mission={mission} onOpen={onOpenMission} />
                 </Popup>
               </Marker>
             )
           })}
       </MapContainer>
+
+      {showControls && (
+        <div className="map-controls">
+          <Button type="button" size="icon" variant="secondary" className="map-controls__btn" onClick={handleFitAll} title="Voir toute la flotte">
+            <Maximize2 className="size-4" />
+          </Button>
+          {selectedMissionId && flyTarget && (
+            <Button
+              type="button"
+              size="icon"
+              variant="secondary"
+              className="map-controls__btn"
+              onClick={() => openSelectedPopup()}
+              title="Centrer la sélection"
+            >
+              <Crosshair className="size-4" />
+            </Button>
+          )}
+        </div>
+      )}
+
+      {showDetailPanel && selectedMission && (
+        <div className="map-detail-panel">
+          <div className="map-detail-panel__header">
+            <Navigation className="size-4 text-primary" />
+            <div>
+              <p className="map-detail-panel__title">{selectedMission.id}</p>
+              <p className="map-detail-panel__sub">
+                {selectedMission.depart} → {selectedMission.destination}
+              </p>
+            </div>
+          </div>
+          <div className="map-detail-panel__grid">
+            <div>
+              <span className="map-detail-panel__label">Client</span>
+              <span>{selectedMission.client}</span>
+            </div>
+            <div>
+              <span className="map-detail-panel__label">Camion</span>
+              <span className="font-mono">{selectedMission.vehicule}</span>
+            </div>
+            <div>
+              <span className="map-detail-panel__label">Chauffeur</span>
+              <span>{selectedMission.chauffeur}</span>
+            </div>
+            <div>
+              <span className="map-detail-panel__label">Progression</span>
+              <span>{Math.round(selectedMission.progress * 100)}%</span>
+            </div>
+            {selectedVehicle && (
+              <>
+                <div>
+                  <span className="map-detail-panel__label">Vitesse</span>
+                  <span>{selectedVehicle.speed ?? 0} km/h</span>
+                </div>
+                <div>
+                  <span className="map-detail-panel__label">Position GPS</span>
+                  <span className="text-xs">{formatCoords(selectedVehicle.coords)}</span>
+                </div>
+              </>
+            )}
+          </div>
+          {onOpenMission && (
+            <Button size="sm" className="w-full mt-2" onClick={() => onOpenMission(selectedMission.id)}>
+              Ouvrir la mission
+            </Button>
+          )}
+        </div>
+      )}
 
       {showLegend && activeStatuses.length > 0 && (
         <div className="map-legend">
@@ -273,25 +464,106 @@ export function TransportMap({
             <span className="map-legend__line map-legend__line--remaining" />
             <span>Restant</span>
           </div>
+          <div className="map-legend__item">
+            <span className="map-legend__endpoint map-legend__endpoint--depart">D</span>
+            <span>Départ</span>
+          </div>
+          <div className="map-legend__item">
+            <span className="map-legend__endpoint map-legend__endpoint--arrivee">A</span>
+            <span>Arrivée</span>
+          </div>
         </div>
       )}
     </div>
   )
 }
 
-function MapPopup({ mission }: { mission: Mission }) {
+function MissionPopup({
+  mission,
+  totalKm,
+  remainingKm,
+  eta,
+  onOpen,
+}: {
+  mission: Mission
+  totalKm: number
+  remainingKm: number
+  eta: number | null
+  onOpen?: () => void
+}) {
   return (
-    <div className="space-y-1 text-sm min-w-[160px]">
-      <p className="font-bold">{mission.id}</p>
-      <p>
+    <div className="map-popup">
+      <div className="map-popup__header">
+        <span className="map-popup__badge" style={{ background: STATUS_COLORS[mission.statut] }}>
+          {STATUS_LABELS[mission.statut]}
+        </span>
+        <span className="map-popup__id">{mission.id}</span>
+      </div>
+      <p className="map-popup__route">
         {mission.depart} → {mission.destination}
       </p>
-      <p className="text-muted-foreground">
-        {mission.client} — {mission.chauffeur}
+      <p className="map-popup__meta">
+        {mission.client} · {mission.chauffeur}
       </p>
-      <p className="text-xs">
-        Progression : {Math.round(mission.progress * 100)}%
+      <div className="map-popup__stats">
+        <div><span>Distance</span><strong>{formatDistance(totalKm)}</strong></div>
+        <div><span>Restant</span><strong>{formatDistance(remainingKm)}</strong></div>
+        <div><span>ETA</span><strong>{formatEta(eta)}</strong></div>
+        <div><span>Avancement</span><strong>{Math.round(mission.progress * 100)}%</strong></div>
+      </div>
+      {onOpen && (
+        <button type="button" className="map-popup__action" onClick={onOpen}>
+          Voir la fiche mission
+        </button>
+      )}
+    </div>
+  )
+}
+
+function VehiclePopup({
+  vehicle,
+  mission,
+  onOpen,
+}: {
+  vehicle: MapVehicle
+  mission?: Mission
+  onOpen?: (id: string) => void
+}) {
+  const remainingKm = mission ? getRemainingDistanceKm(mission.route, mission.progress) : 0
+  const eta = estimateEtaMinutes(remainingKm, vehicle.speed ?? 0)
+
+  return (
+    <div className="map-popup">
+      <div className="map-popup__header">
+        <span
+          className="map-popup__badge"
+          style={{ background: vehicle.color ?? STATUS_COLORS.en_cours }}
+        >
+          {vehicle.idle ? "Au dépôt" : STATUS_LABELS[vehicle.status ?? ""] ?? "En service"}
+        </span>
+        <span className="map-popup__id font-mono">{vehicle.label}</span>
+      </div>
+      {vehicle.vehicleType && <p className="map-popup__type">{vehicle.vehicleType}</p>}
+      <p className="map-popup__meta">
+        {vehicle.driver ?? "—"}
+        {vehicle.client ? ` · ${vehicle.client}` : ""}
       </p>
+      {vehicle.positionLabel && <p className="map-popup__route">{vehicle.positionLabel}</p>}
+      <div className="map-popup__stats">
+        <div><span>Vitesse</span><strong>{vehicle.speed ?? 0} km/h</strong></div>
+        <div><span>GPS</span><strong className="text-xs">{formatCoords(vehicle.coords)}</strong></div>
+        {mission && (
+          <>
+            <div><span>Restant</span><strong>{formatDistance(remainingKm)}</strong></div>
+            <div><span>ETA</span><strong>{formatEta(eta)}</strong></div>
+          </>
+        )}
+      </div>
+      {vehicle.missionId && onOpen && (
+        <button type="button" className="map-popup__action" onClick={() => onOpen(vehicle.missionId!)}>
+          Suivre la mission {vehicle.missionRef}
+        </button>
+      )}
     </div>
   )
 }
