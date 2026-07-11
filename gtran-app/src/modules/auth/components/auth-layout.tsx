@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { motion } from "motion/react"
-import { MapPin, Shield, BarChart3, Truck, Wifi } from "lucide-react"
+import { MapPin, Shield, BarChart3, Wifi } from "lucide-react"
 import { BrandLogo } from "@/components/shared/brand-logo"
 
 const FEATURES = [

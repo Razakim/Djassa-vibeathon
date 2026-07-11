@@ -1,13 +1,10 @@
 import { useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { 
-  AlertTriangle, 
-  Fuel, 
   MapPin, 
   Route, 
   TrendingUp, 
   Truck,
-  ArrowRight,
   ChevronRight,
   Wallet,
   Plus,

@@ -45,8 +45,12 @@ const paymentVariants: Record<PaymentStatus, "success" | "warning" | "secondary"
   en_retard: "destructive",
 }
 
-export function MissionStatusBadge({ status }: { status: MissionStatus }) {
-  return <Badge variant={missionVariants[status]}>{missionLabels[status]}</Badge>
+export function MissionStatusBadge({ status, className }: { status: MissionStatus; className?: string }) {
+  return (
+    <Badge variant={missionVariants[status]} className={className}>
+      {missionLabels[status]}
+    </Badge>
+  )
 }
 
 export function VehicleStatusBadge({ status }: { status: VehicleStatus }) {

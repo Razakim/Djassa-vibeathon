@@ -1,12 +1,7 @@
 import { motion } from "motion/react"
 import { useNavigate } from "react-router-dom"
 import { 
-  TrendingUp, 
   ShieldCheck, 
-  ChevronRight,
-  Truck,
-  Users,
-  Route,
   ArrowRight
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
