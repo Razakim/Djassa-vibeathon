@@ -1,316 +1,580 @@
-import { motion } from "motion/react"
+import React from "react"
+import { motion, useScroll, useTransform } from "motion/react"
 import { useNavigate } from "react-router-dom"
+import { useRef } from "react"
 import { 
-  TrendingUp, 
-  ShieldCheck, 
-  ChevronRight
+  ArrowRight,
+  Zap,
+  Globe,
+  BarChart3,
+  Smartphone,
+  CheckCircle2,
+  ChevronRight,
+  Map,
+  Users2,
+  Lock,
+  Truck
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { BrandLogo } from "@/components/shared/brand-logo"
 
-export function LandingPage() {
+export function LandingPage(): JSX.Element {
   const navigate = useNavigate()
+  const targetRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: targetRef,
+    offset: ["start end", "end start"]
+  })
+
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [0, 1])
+  const scale = useTransform(scrollYProgress, [0, 0.5], [0.8, 1])
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2
+      }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      transition: { 
+        duration: 1, 
+        ease: [0.19, 1, 0.22, 1] 
+      } 
+    }
+  }
 
   return (
-    <div className="bg-white text-zinc-950 font-brutal-mono min-h-screen selection:bg-zinc-950 selection:text-white overflow-x-hidden">
+    <div className="bg-[#FAF9F6] text-zinc-900 font-dm-sans min-h-screen selection:bg-ivory-orange selection:text-white overflow-x-hidden antialiased">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b-2 border-zinc-950 bg-white/95 backdrop-blur-md px-6 md:px-12 py-5 flex items-center justify-between">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
-          <BrandLogo variant="full" size={40} />
-          <span className="text-3xl font-brutal-head tracking-tighter uppercase">Djassa</span>
-        </div>
+      <nav className="fixed top-0 left-0 right-0 z-[100] border-b border-zinc-200/40 bg-white/60 backdrop-blur-2xl px-6 md:px-12 py-4 flex items-center justify-between">
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8 }}
+          className="flex items-center gap-3 cursor-pointer" 
+          onClick={() => navigate("/")}
+        >
+          <div className="bg-ivory-emerald p-2 rounded-xl shadow-[0_8px_16px_-6px_rgba(0,86,59,0.3)]">
+            <BrandLogo variant="mark" size={26} className="text-white filter brightness-0 invert" />
+          </div>
+          <div className="flex flex-col text-left">
+            <span className="text-xl font-plus-jakarta font-extrabold uppercase tracking-tighter leading-none text-zinc-950">
+              Djassa<span className="text-ivory-orange">OS</span>
+            </span>
+            <span className="text-[8px] font-bold tracking-[0.25em] text-zinc-400 uppercase text-left">Expertise Logistique</span>
+          </div>
+        </motion.div>
         
-        <div className="hidden lg:flex items-center gap-12 text-sm font-black uppercase tracking-widest">
-          <a href="#features" className="hover:line-through transition-all decoration-2">Features</a>
-          <a href="#stats" className="hover:line-through transition-all decoration-2">ROI</a>
-          <a href="#ecosystem" className="hover:line-through transition-all decoration-2">Ecosystem</a>
+        <div className="hidden lg:flex items-center gap-12 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+          <a href="#plateforme" className="hover:text-ivory-emerald transition-all duration-300 relative group">
+            Plateforme
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-ivory-emerald group-hover:w-full transition-all duration-300" />
+          </a>
+          <a href="#solutions" className="hover:text-ivory-emerald transition-all duration-300 relative group">
+            Solutions
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-ivory-emerald group-hover:w-full transition-all duration-300" />
+          </a>
+          <a href="#impact" className="hover:text-ivory-emerald transition-all duration-300 relative group">
+            Impact ROI
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-ivory-emerald group-hover:w-full transition-all duration-300" />
+          </a>
         </div>
 
-        <div className="flex items-center gap-6">
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8 }}
+          className="flex items-center gap-6"
+        >
           <button 
             onClick={() => navigate("/login")}
-            className="hidden sm:block text-sm font-black uppercase tracking-widest hover:underline"
+            className="hidden sm:block text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-600 hover:text-ivory-orange transition-colors"
           >
-            Log In
+            Se Connecter
           </button>
           <Button 
             onClick={() => navigate("/register")}
-            className="bg-zinc-950 text-white rounded-none px-8 py-6 text-sm font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-[6px_6px_0px_0px_rgba(0,0,0,0.2)] active:shadow-none active:translate-x-1 active:translate-y-1"
+            className="bg-ivory-emerald text-white rounded-full px-8 h-11 text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-950 transition-all shadow-xl shadow-emerald-900/20 active:scale-95 border-none"
           >
-            Get Started
+            Démarrer
           </Button>
-        </div>
+        </motion.div>
       </nav>
 
       {/* Hero Section */}
-      <section className="flex flex-col lg:flex-row min-h-screen border-b-2 border-zinc-950 pt-20">
-        <div className="lg:w-[55%] p-8 md:p-20 flex flex-col justify-center border-r-0 lg:border-r-2 border-zinc-950 bg-white relative">
-          <div className="absolute top-10 left-10 opacity-5 pointer-events-none text-[20rem] font-brutal-head leading-none select-none">
-            DJ
-          </div>
-          <div className="relative z-10">
-            <h1 className="text-6xl md:text-8xl lg:text-[9rem] font-brutal-head uppercase leading-[0.85] mb-10 tracking-tighter">
-              THE <br /> OPERATING <br /> SYSTEM
-            </h1>
-            <div className="flex flex-col md:flex-row items-baseline gap-6 mb-12">
-               <span className="text-3xl lg:text-5xl font-brutal-head uppercase bg-zinc-950 text-white px-4 py-2">FOR WEST AFRICAN</span>
-               <span className="text-3xl lg:text-5xl font-brutal-head uppercase border-2 border-zinc-950 px-4 py-2 italic">LOGISTICS</span>
-            </div>
-            <p className="text-xl md:text-2xl max-w-xl mb-14 font-bold leading-tight uppercase tracking-tight text-zinc-600">
-              Centralize fleet, drivers, and missions into one robust infrastructure. End the WhatsApp & Excel chaos.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-6">
-              <Button 
-                onClick={() => navigate("/register")}
-                className="bg-zinc-950 text-white px-12 h-20 text-2xl font-brutal-head uppercase rounded-none hover:bg-zinc-800 transition-all shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1"
-              >
-                JOIN THE ELITE
-              </Button>
-            </div>
-          </div>
+      <section className="relative min-h-screen flex flex-col items-center justify-center pt-32 pb-20 px-6 text-center overflow-hidden">
+        {/* Ambient Glows */}
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-ivory-emerald/5 blur-[120px] rounded-full" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-ivory-orange/5 blur-[120px] rounded-full" />
         </div>
-        <div className="lg:w-[45%] relative bg-zinc-950 overflow-hidden min-h-[500px] lg:min-h-0">
-          <video 
-            src="https://videos.pexels.com/video-files/28744906/12461966_640_360_24fps.mp4" 
-            poster="https://images.pexels.com/videos/28744906/cargo-cargo-trailers-cargo-transport-commercial-truck-28744906.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=630&w=1200" 
-            autoPlay 
-            muted 
-            loop 
-            playsInline 
-            className="w-full h-full object-cover grayscale brightness-75 hover:grayscale-0 transition-all duration-1000"
-          />
-          <div className="absolute top-10 right-10 bg-white text-zinc-950 p-6 border-2 border-zinc-950 flex flex-col gap-2 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-            <span className="text-[10px] font-black tracking-widest uppercase">LIVE_STATUS</span>
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 bg-green-500 animate-pulse" />
-              <span className="text-xl font-brutal-head">1,248 ACTIVE TRUCKS</span>
+
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="relative z-10 max-w-6xl mx-auto"
+        >
+          <motion.div variants={itemVariants} className="inline-flex items-center gap-3 px-4 py-2 bg-zinc-100 border border-zinc-200/60 rounded-full mb-10 shadow-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ivory-orange opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-ivory-orange"></span>
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600">L'infrastructure Digitale du Transport Ivoirien</span>
+          </motion.div>
+          
+          <motion.h1 
+            variants={itemVariants} 
+            className="text-6xl md:text-[7.5rem] font-plus-jakarta font-extrabold uppercase leading-[0.85] mb-10 tracking-[-0.04em] text-zinc-950"
+          >
+            L'EXCELLENCE <br /> LOGISTIQUE. <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-ivory-emerald via-emerald-700 to-ivory-emerald bg-[length:200%_auto] animate-gradient-text">TOUT SIMPLEMENT.</span>
+          </motion.h1>
+          
+          <motion.p 
+            variants={itemVariants} 
+            className="text-lg md:text-2xl mb-14 font-medium leading-relaxed text-zinc-500 max-w-3xl mx-auto tracking-tight"
+          >
+            DjassaOS est le système d'exploitation de classe mondiale conçu pour connecter Abidjan au reste du monde avec une précision algorithmique.
+          </motion.p>
+          
+          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-6 justify-center">
+            <Button 
+              onClick={() => navigate("/register")}
+              className="bg-ivory-orange hover:bg-zinc-950 text-white px-12 h-16 text-xs font-bold uppercase tracking-[0.2em] rounded-full shadow-[0_20px_40px_-10px_rgba(226,88,34,0.3)] transition-all active:scale-95 group border-none"
+            >
+              Démarrer l'expérience
+              <ArrowRight className="ml-2 size-4 group-hover:translate-x-1 transition-transform duration-300" />
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => navigate("/login")}
+              className="border border-zinc-200 bg-white/40 backdrop-blur-md rounded-full h-16 px-12 text-xs font-bold uppercase tracking-[0.2em] hover:bg-white hover:border-zinc-300 transition-all shadow-sm"
+            >
+              Essayer la démo
+            </Button>
+          </motion.div>
+        </motion.div>
+
+        {/* Hero Mockup with Scroll Interaction */}
+        <motion.div 
+          style={{ opacity, scale }}
+          ref={targetRef}
+          className="relative mt-24 w-full max-w-7xl mx-auto px-4 perspective-1000"
+        >
+          <div className="relative rounded-[3rem] overflow-hidden border-[1px] border-zinc-200/50 shadow-[0_100px_80px_-40px_rgba(0,0,0,0.15)] bg-white p-2">
+            <div className="rounded-[2.4rem] overflow-hidden aspect-[16/9] relative bg-zinc-950 group">
+              <img 
+                src="https://images.pexels.com/photos/16663692/pexels-photo-16663692.jpeg" 
+                alt="DjassaOS Interface" 
+                className="w-full h-full object-cover opacity-90 scale-105 group-hover:scale-100 transition-transform duration-[2s] ease-out"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-transparent to-transparent" />
+              <div className="absolute bottom-12 left-12 text-left">
+                <div className="flex items-center gap-4 mb-3">
+                  <div className="px-3 py-1 bg-ivory-emerald text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full text-left">LIVE FLOTTE</div>
+                  <span className="text-white/40 text-[9px] font-bold uppercase tracking-[0.2em] text-left">Réseau National</span>
+                </div>
+                <h2 className="text-white text-3xl font-plus-jakarta font-extrabold uppercase tracking-tight text-left">Corridor Abidjan - San Pédro</h2>
+              </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </section>
 
-      {/* Marquee Ticker */}
-      <div className="border-b-2 border-zinc-950 py-10 bg-zinc-950 text-white overflow-hidden whitespace-nowrap relative">
-        <div className="flex animate-marquee">
+      {/* Partners Marquee */}
+      <div className="py-20 bg-white border-y border-zinc-100/50 overflow-hidden relative">
+        <div className="absolute top-0 left-0 bottom-0 w-64 bg-gradient-to-r from-white to-transparent z-10" />
+        <div className="absolute top-0 right-0 bottom-0 w-64 bg-gradient-to-l from-white to-transparent z-10" />
+        
+        <div className="flex animate-marquee opacity-20 whitespace-nowrap">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex shrink-0">
-              <span className="text-4xl md:text-6xl font-brutal-head uppercase mx-12 flex items-center gap-12">
-                FLEET <span className="text-zinc-700">•</span> CHAUFFEURS <span className="text-zinc-700">•</span> MISSIONS <span className="text-zinc-700">•</span> ACCOUNTING <span className="text-zinc-700">•</span> LOGISTICS <span className="text-zinc-700">•</span> EFFICIENCY
-              </span>
+            <div key={i} className="flex shrink-0 items-center gap-24 mx-12">
+              <span className="text-3xl font-plus-jakarta font-black tracking-tighter uppercase">Port Autonome d'Abidjan</span>
+              <span className="text-3xl font-plus-jakarta font-black tracking-tighter uppercase">Bolloré Logistics</span>
+              <span className="text-3xl font-plus-jakarta font-black tracking-tighter uppercase">Sitarail</span>
+              <span className="text-3xl font-plus-jakarta font-black tracking-tighter uppercase">CMA CGM Africa</span>
+              <span className="text-3xl font-plus-jakarta font-black tracking-tighter uppercase">Wave Mobile Money</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Feature Sections */}
-      <section id="features" className="flex flex-col">
-        {/* 01 - Fleet */}
-        <div className="border-b-2 border-zinc-950 group cursor-default hover:bg-zinc-50 transition-all">
-          <div className="max-w-screen-2xl mx-auto flex flex-col lg:flex-row items-center p-8 md:p-24 gap-16 md:gap-32">
-            <div className="text-[10rem] md:text-[20rem] font-brutal-head text-zinc-100 group-hover:text-zinc-950 transition-colors duration-700 leading-none select-none">01</div>
-            <div className="flex-1">
-              <div className="text-xs font-black tracking-[0.4em] uppercase mb-4 text-zinc-400">OPERATIONAL_EXCELLENCE</div>
-              <h3 className="text-5xl md:text-8xl font-brutal-head uppercase mb-8 tracking-tighter leading-none">Fleet <br /> Management</h3>
-              <p className="text-xl md:text-2xl max-w-xl font-bold uppercase tracking-tight text-zinc-700 leading-tight">
-                Real-time tracking, fuel monitoring, and predictive maintenance for your entire West African fleet.
-              </p>
-            </div>
-            <div className="w-full lg:w-1/3 aspect-video relative border-4 border-zinc-950 overflow-hidden bg-zinc-200 group-hover:shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] transition-all duration-500">
-               <img 
-                 src="https://images.pexels.com/photos/20097991/pexels-photo-20097991.jpeg?auto=compress&cs=tinysrgb&w=800&q=80" 
-                 alt="Truck" 
-                 className="w-full h-full object-cover grayscale brightness-90 group-hover:grayscale-0 group-hover:scale-110 transition-all duration-1000" 
-               />
-            </div>
-          </div>
+      {/* Bento Grid Features */}
+      <section id="plateforme" className="py-40 px-6 max-w-7xl mx-auto">
+        <div className="text-center mb-24 max-w-3xl mx-auto">
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-[10px] font-bold tracking-[0.5em] uppercase mb-6 text-ivory-orange text-center"
+          >
+            La Puissance de DjassaOS
+          </motion.h2>
+          <motion.h3 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-5xl md:text-7xl font-plus-jakarta font-extrabold uppercase tracking-[-0.03em] text-zinc-950 leading-[0.95] text-center"
+          >
+            CONÇU POUR L'ÉLITE <br /><span className="text-ivory-emerald">LOGISTIQUE.</span>
+          </motion.h3>
         </div>
 
-        {/* 02 - Drivers */}
-        <div className="border-b-2 border-zinc-950 group cursor-default hover:bg-zinc-50 transition-all">
-          <div className="max-w-screen-2xl mx-auto flex flex-col lg:flex-row-reverse items-center p-8 md:p-24 gap-16 md:gap-32">
-            <div className="text-[10rem] md:text-[20rem] font-brutal-head text-zinc-100 group-hover:text-zinc-950 transition-colors duration-700 leading-none select-none">02</div>
-            <div className="flex-1">
-              <div className="text-xs font-black tracking-[0.4em] uppercase mb-4 text-zinc-400">HUMAN_CAPITAL</div>
-              <h3 className="text-5xl md:text-8xl font-brutal-head uppercase mb-8 tracking-tighter leading-none text-right lg:text-left">Driver <br /> Performance</h3>
-              <p className="text-xl md:text-2xl max-w-xl font-bold uppercase tracking-tight text-zinc-700 leading-tight lg:text-left">
-                Monitor punctuality, safety scores, and mission success rates. Digitized HR for your mobile workforce.
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 h-auto md:h-[900px]">
+          {/* Real-time Tracking */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            whileHover={{ y: -10 }}
+            className="md:col-span-8 bg-white border border-zinc-200/50 rounded-[3.5rem] p-12 flex flex-col justify-between overflow-hidden relative group shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] transition-all duration-700"
+          >
+            <div className="relative z-10 max-w-md text-left">
+              <div className="bg-emerald-50 text-ivory-emerald p-4 rounded-[1.5rem] w-fit mb-8 shadow-sm">
+                <Map className="size-7" />
+              </div>
+              <h4 className="text-4xl font-plus-jakarta font-extrabold uppercase tracking-tight mb-6">Suivi Temps Réel</h4>
+              <p className="text-zinc-500 text-lg font-medium leading-relaxed">
+                Visualisez chaque mouvement de votre flotte sur une carte interactive haute précision. Géofencing intelligent et alertes instantanées.
               </p>
             </div>
-            <div className="w-full lg:w-1/3 aspect-video border-4 border-zinc-950 p-10 flex flex-col justify-between bg-zinc-950 text-white group-hover:shadow-[-20px_20px_0px_0px_rgba(0,0,0,1)] transition-all duration-500">
-              <div className="flex justify-between items-start">
-                <span className="text-xs font-bold uppercase tracking-widest opacity-50">DRIVER_ID: 942</span>
-                <span className="px-4 py-1.5 bg-green-500 text-zinc-950 text-xs font-black uppercase tracking-tighter">ACTIVE_MISSION</span>
-              </div>
-              <div>
-                <div className="text-4xl font-brutal-head tracking-tighter leading-none mb-6">KWAME MENSAH</div>
-                <div className="w-full bg-zinc-800 h-4 border border-zinc-700">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    whileInView={{ width: "92%" }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 2, delay: 0.5, ease: "circOut" }}
-                    className="bg-white h-full" 
-                  />
-                </div>
-                <div className="flex justify-between mt-3 text-[10px] font-black tracking-widest opacity-50 uppercase">
-                  <span>Safety Score</span>
-                  <span>92%</span>
-                </div>
-              </div>
+            <div className="absolute bottom-[-5%] right-[-5%] w-[70%] h-[55%] bg-zinc-50 rounded-tl-[4rem] border-t border-l border-zinc-100 p-8 shadow-2xl translate-y-8 translate-x-8 group-hover:translate-y-0 group-hover:translate-x-0 transition-transform duration-[1.2s] ease-[0.19,1,0.22,1]">
+               <div className="flex flex-col gap-5">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="flex items-center gap-5 bg-white p-4 rounded-2xl shadow-sm border border-zinc-100/50">
+                      <div className="size-10 bg-zinc-100 rounded-xl flex items-center justify-center">
+                        <Truck className="size-5 text-zinc-400" />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <div className="h-2.5 bg-zinc-100 rounded-full w-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            whileInView={{ width: `${40 + i * 15}%` }}
+                            transition={{ duration: 1.5, delay: 0.5 }}
+                            className="bg-ivory-emerald h-full"
+                          />
+                        </div>
+                        <div className="flex justify-between text-[9px] font-bold text-zinc-400 uppercase tracking-widest text-left">
+                          <span>Route : A1-0{i}</span>
+                          <span>{85 + i}% Optimisé</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+               </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
 
-        {/* 03 - Missions */}
-        <div className="border-b-2 border-zinc-950 group cursor-default hover:bg-zinc-50 transition-all">
-          <div className="max-w-screen-2xl mx-auto flex flex-col lg:flex-row items-center p-8 md:p-24 gap-16 md:gap-32">
-            <div className="text-[10rem] md:text-[20rem] font-brutal-head text-zinc-100 group-hover:text-zinc-950 transition-colors duration-700 leading-none select-none">03</div>
-            <div className="flex-1">
-              <div className="text-xs font-black tracking-[0.4em] uppercase mb-4 text-zinc-400">MISSION_CRITICAL</div>
-              <h3 className="text-5xl md:text-8xl font-brutal-head uppercase mb-8 tracking-tighter leading-none">Mission <br /> Control</h3>
-              <p className="text-xl md:text-2xl max-w-xl font-bold uppercase tracking-tight text-zinc-700 leading-tight">
-                From creation to proof-of-delivery. Fully digitized workflows that eliminate paperwork and errors.
+          {/* ROI Metric */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            whileHover={{ y: -10 }}
+            className="md:col-span-4 bg-zinc-950 text-white border border-zinc-800 rounded-[3.5rem] p-12 flex flex-col justify-between shadow-2xl transition-all duration-700"
+          >
+            <div className="bg-orange-500/20 text-ivory-orange p-5 rounded-[1.5rem] w-fit mb-8 shadow-lg">
+              <BarChart3 className="size-7" />
+            </div>
+            <div className="text-left">
+              <h4 className="text-4xl font-plus-jakarta font-extrabold uppercase tracking-tight mb-6 text-left">ROI Immédiat</h4>
+              <p className="text-zinc-400 text-lg font-medium mb-10 leading-relaxed text-left">
+                Réduisez vos coûts opérationnels de 15% dès le premier cycle.
+              </p>
+              <div className="space-y-2 text-left">
+                <div className="text-7xl font-plus-jakarta font-black text-ivory-orange tracking-tighter text-left">+32%</div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-600 text-left">Marge Opérationnelle</div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Payments */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            whileHover={{ y: -10 }}
+            className="md:col-span-4 bg-[#F2F2F2] border border-zinc-200/50 rounded-[3.5rem] p-12 flex flex-col justify-between shadow-sm hover:shadow-xl transition-all duration-700"
+          >
+             <div className="bg-gold-500/10 text-ivory-gold p-5 rounded-[1.5rem] w-fit mb-8 shadow-sm">
+              <Smartphone className="size-7" />
+            </div>
+            <div className="text-left">
+              <h4 className="text-3xl font-plus-jakarta font-extrabold uppercase tracking-tight mb-6 text-left">Mobile Money</h4>
+              <p className="text-zinc-600 text-lg font-medium leading-relaxed text-left">
+                Gérez les frais de route et les salaires via Wave, Orange et MTN en un clic.
               </p>
             </div>
-            <div className="w-full lg:w-1/3 border-4 border-zinc-950 p-12 bg-white group-hover:shadow-[20px_20px_0px_0px_rgba(0,0,0,1)] transition-all duration-500">
-              <div className="flex items-center gap-4 mb-10">
-                <ShieldCheck className="w-12 h-12 text-zinc-950" />
-                <span className="font-brutal-head text-2xl uppercase tracking-tighter">VERIFIED DELIVERY</span>
+          </motion.div>
+
+          {/* Drivers */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 }}
+            whileHover={{ y: -10 }}
+            className="md:col-span-8 bg-white border border-zinc-200/50 rounded-[3.5rem] p-12 flex flex-col md:flex-row gap-12 items-center overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-700"
+          >
+            <div className="flex-1 text-left">
+              <div className="bg-blue-50 text-blue-600 p-5 rounded-[1.5rem] w-fit mb-8 shadow-sm">
+                <Users2 className="size-7" />
               </div>
-              <div className="space-y-6 text-lg border-t-4 border-zinc-950 pt-10 font-black uppercase tracking-widest">
-                <div className="flex justify-between border-b border-zinc-200 pb-4">
-                  <span className="text-zinc-400">Origin</span>
-                  <span className="font-brutal-head text-zinc-950">ABIDJAN</span>
-                </div>
-                <div className="flex justify-between border-b border-zinc-200 pb-4">
-                  <span className="text-zinc-400">Dest</span>
-                  <span className="font-brutal-head text-zinc-950">BAMAKO</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-400">Status</span>
-                  <span className="text-green-600 font-brutal-head">COMPLETED</span>
-                </div>
-              </div>
+              <h4 className="text-4xl font-plus-jakarta font-extrabold uppercase tracking-tight mb-6 text-left">Capital Humain</h4>
+              <p className="text-zinc-500 text-lg font-medium leading-relaxed text-left">
+                Profils chauffeurs augmentés, scores de sécurité et suivi administratif automatisé. 
+              </p>
             </div>
-          </div>
+            <div className="w-full md:w-1/2 aspect-square rounded-[2.5rem] overflow-hidden group/img">
+              <img 
+                src="https://images.pexels.com/photos/12706241/pexels-photo-12706241.jpeg" 
+                alt="Equipe Logistique" 
+                className="w-full h-full object-cover grayscale group-hover/img:grayscale-0 group-hover/img:scale-105 transition-all duration-[1.5s]"
+              />
+            </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* ROI Metrics */}
-      <section id="stats" className="py-40 border-b-2 border-zinc-950 bg-zinc-50 relative overflow-hidden">
-        <div className="max-w-screen-2xl mx-auto px-8 md:px-20 text-center relative z-10">
-          <h2 className="text-6xl md:text-9xl font-brutal-head uppercase mb-32 tracking-tighter leading-none">
-            ABSOLUTE CONTROL <br /> HIGHER MARGINS
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
+      {/* Immersive Port Section */}
+      <section className="py-20 px-6">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.98 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1.2, ease: "circOut" }}
+          className="max-w-7xl mx-auto rounded-[4rem] overflow-hidden relative aspect-[21/9] bg-zinc-950 group shadow-2xl"
+        >
+          <video 
+            src="https://videos.pexels.com/video-files/4499159/4499159-sd_960_540_30fps.mp4" 
+            autoPlay 
+            muted 
+            loop 
+            playsInline 
+            className="w-full h-full object-cover opacity-50 scale-105 group-hover:scale-100 transition-transform duration-[5s] ease-out"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/30 to-transparent flex flex-col items-center justify-center text-center p-12">
+            <motion.h3 
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-5xl md:text-8xl font-plus-jakarta font-black text-white uppercase tracking-tighter mb-12 leading-[0.9] text-center"
+            >
+              CONNECTEZ ABIDJAN <br /> AU RESTE DU MONDE.
+            </motion.h3>
+            <Button className="bg-white text-zinc-950 hover:bg-ivory-orange hover:text-white px-14 h-18 rounded-full text-[10px] font-bold uppercase tracking-[0.25em] border-none transition-all shadow-2xl">
+              Découvrir nos solutions portuaires
+            </Button>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* Impact Section */}
+      <section id="impact" className="py-40 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start gap-20 mb-32">
+            <div className="max-w-2xl text-left">
+              <h2 className="text-[10px] font-bold tracking-[0.5em] uppercase mb-6 text-ivory-orange text-left">Performance Mondiale</h2>
+              <h3 className="text-5xl md:text-[5.5rem] font-plus-jakarta font-extrabold uppercase tracking-[-0.04em] text-zinc-950 leading-[0.9] text-left">
+                L'IMPACT PAR <br /><span className="text-ivory-emerald text-left">LES CHIFFRES.</span>
+              </h3>
+            </div>
+            <div className="lg:pt-20">
+               <p className="text-zinc-500 text-xl font-medium max-w-md text-left leading-relaxed">
+                Nous ne nous contentons pas de digitaliser. Nous transformons votre structure de coûts pour une rentabilité durable et sans compromis.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-20 text-left">
             {[
-              { icon: TrendingUp, val: "+32%", label: "Operational Margin", desc: "Average increase in net profitability within 6 months of adoption." },
-              { icon: null, val: "0", label: "Lost Documents", desc: "Total digital centralization of proof of delivery and waybills.", dark: true },
-              { icon: null, val: "100%", label: "Compliance Rate", desc: "Real-time automated alerts for license, insurance, and maintenance." }
-            ].map((m, i) => (
+              { val: "99.9%", label: "Uptime", desc: "Une infrastructure cloud souveraine pour vos opérations 24/7." },
+              { val: "25k+", label: "Missions / Mois", desc: "La plateforme capable de piloter les plus grandes flottes d'Afrique." },
+              { val: "150M", label: "Économies", desc: "FCFA économisés en moyenne par an par nos clients stratégiques." },
+              { val: "0.0s", label: "Latence", desc: "Une interface fluide pensée pour la rapidité d'exécution sur le terrain." }
+            ].map((stat, i) => (
               <motion.div 
                 key={i}
-                initial={{ opacity: 0, y: 50 }}
+                initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.2, duration: 0.8 }}
-                className={`aspect-square border-4 border-zinc-950 p-12 flex flex-col justify-between transition-all hover:-translate-y-4 hover:shadow-[24px_24px_0px_0px_rgba(0,0,0,1)] cursor-default ${m.dark ? 'bg-zinc-950 text-white hover:bg-zinc-900' : 'bg-white text-zinc-950'}`}
+                transition={{ delay: i * 0.1, duration: 0.8 }}
+                className="group relative text-left"
               >
-                {m.icon ? <m.icon className="w-20 h-20" /> : <div className="h-20" />}
-                <div className="text-left">
-                  <div className="text-8xl font-brutal-head mb-4 tracking-tighter leading-none">{m.val}</div>
-                  <div className="text-2xl font-brutal-head uppercase mb-6 leading-none tracking-tight">{m.label}</div>
-                  <p className={`text-base font-bold uppercase tracking-tight leading-tight ${m.dark ? 'opacity-50' : 'text-zinc-500'}`}>{m.desc}</p>
-                </div>
+                <div className="text-6xl font-plus-jakarta font-black text-zinc-950 mb-6 group-hover:text-ivory-emerald transition-colors duration-500 tracking-tighter text-left">{stat.val}</div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-ivory-orange mb-5 text-left">{stat.label}</div>
+                <p className="text-zinc-500 font-medium leading-relaxed text-left">{stat.desc}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-          <img src="https://cdn.jsdelivr.net/npm/game-icons-transparent@latest/svgs/lorc/waves.svg" className="w-full h-full object-cover scale-150" alt="" />
-        </div>
-        
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          whileInView={{ scale: 1, opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 1, ease: "circOut" }}
-          className="relative z-10 w-full max-w-7xl"
-        >
-          <h2 className="text-7xl md:text-[15rem] lg:text-[18rem] font-brutal-head uppercase leading-[0.75] mb-24 tracking-tighter">
-            TRANSFORM <br /> NOW
-          </h2>
-          
-          <div className="flex flex-col md:flex-row border-4 border-white p-4 gap-4 bg-white/5 backdrop-blur-xl max-w-5xl mx-auto">
-            <input 
-              type="email" 
-              placeholder="ENTER CORPORATE EMAIL" 
-              className="flex-1 bg-transparent text-white px-10 py-8 text-3xl font-brutal-mono focus:outline-none placeholder:text-white/10 uppercase font-black" 
-            />
-            <Button 
-              className="bg-white text-zinc-950 h-auto py-8 px-20 text-4xl font-brutal-head uppercase rounded-none hover:bg-zinc-200 transition-all active:scale-95 active:translate-y-2"
+      {/* Trust Split Section */}
+      <section id="solutions" className="py-40 px-6 bg-[#F8F9FA]">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-24 items-center">
+          <div className="flex-1 relative order-2 lg:order-1">
+            <div className="aspect-[4/5] rounded-[4rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.2)] bg-zinc-200">
+              <img 
+                src="https://images.pexels.com/photos/7018659/pexels-photo-7018659.jpeg" 
+                alt="Expert Logistique" 
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <motion.div 
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              className="absolute -bottom-12 -right-12 bg-ivory-emerald text-white p-12 rounded-[2.5rem] shadow-2xl max-w-sm hidden lg:block"
             >
-              SUBMIT
-            </Button>
+              <Lock className="size-10 mb-6 text-ivory-gold opacity-80" />
+              <p className="text-lg font-bold uppercase tracking-tight leading-[1.3] text-left">
+                "DjassaOS a redéfini notre vision de la logistique en Côte d'Ivoire. C'est l'outil qui nous manquait."
+              </p>
+              <div className="mt-6 pt-6 border-t border-white/10 flex items-center gap-4">
+                 <div className="size-1 bg-ivory-gold rounded-full" />
+                 <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60 text-left">CEO, Transport CI</span>
+              </div>
+            </motion.div>
           </div>
-          
-          <div className="mt-24 opacity-30 font-brutal-head uppercase tracking-[0.5em] text-sm md:text-2xl">
-            INFRASTRUCTURE FOR WEST AFRICAN LOGISTICS
+          <div className="flex-1 text-left order-1 lg:order-2">
+            <h3 className="text-5xl md:text-6xl font-plus-jakarta font-extrabold uppercase tracking-[-0.03em] text-zinc-950 mb-12 leading-[0.95] text-left">
+              UNE VISION LOCALE. <br /><span className="text-ivory-emerald text-left">UN STANDARD MONDIAL.</span>
+            </h3>
+            <div className="space-y-10">
+               {[
+                { title: "Pensé pour le Terrain", desc: "Conçu avec les acteurs majeurs du transport à Abidjan pour répondre aux réalités d'Afrique de l'Ouest." },
+                { title: "Sécurité & Souveraineté", desc: "Vos données sont protégées selon les plus hauts standards de chiffrement internationaux." },
+                { title: "Excellence Continue", desc: "Des mises à jour hebdomadaires basées sur vos retours pour une interface toujours plus fluide." }
+               ].map((item, i) => (
+                 <div key={i} className="flex gap-8 items-start group text-left">
+                   <div className="bg-white p-4 rounded-2xl shadow-sm border border-zinc-200/50 mt-1 group-hover:bg-ivory-emerald group-hover:text-white transition-all duration-300 text-left">
+                      <CheckCircle2 className="size-6 text-ivory-emerald group-hover:text-white transition-colors" />
+                   </div>
+                   <div className="text-left">
+                     <h4 className="text-xl font-plus-jakarta font-extrabold uppercase tracking-tight text-zinc-950 mb-2 text-left">{item.title}</h4>
+                     <p className="text-zinc-500 text-lg font-medium leading-relaxed text-left">{item.desc}</p>
+                   </div>
+                 </div>
+               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA Section */}
+      <section className="py-56 bg-white text-center relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-emerald-50/50 blur-[180px] rounded-full pointer-events-none" />
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="relative z-10 max-w-5xl mx-auto px-6"
+        >
+          <h2 className="text-6xl md:text-[9rem] font-plus-jakarta font-black uppercase leading-[0.8] mb-14 tracking-[-0.05em] text-zinc-950 text-center">
+            PRÊT À DOMINER <br /> <span className="text-transparent bg-clip-text bg-gradient-to-b from-ivory-emerald to-emerald-800 text-center">LE MARCHÉ ?</span>
+          </h2>
+          <p className="text-zinc-500 text-xl md:text-2xl mb-16 max-w-2xl mx-auto font-medium tracking-tight text-center">
+            Rejoignez les leaders du transport et passez à la vitesse supérieure dès aujourd'hui. L'inscription prend moins de 2 minutes.
+          </p>
+          <div className="flex flex-col sm:flex-row justify-center gap-8 text-center">
+            <Button 
+              onClick={() => navigate("/register")}
+              className="bg-zinc-950 hover:bg-ivory-orange text-white px-16 h-20 text-xs font-bold uppercase tracking-[0.25em] rounded-full shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] transition-all active:scale-95 border-none"
+            >
+              Créer mon espace
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => navigate("/login")}
+              className="border border-zinc-200 bg-white/50 backdrop-blur-md rounded-full h-20 px-16 text-xs font-bold uppercase tracking-[0.25em] hover:bg-white hover:border-zinc-300 transition-all shadow-sm"
+            >
+              Parler à un expert
+              <ChevronRight className="ml-2 size-5" />
+            </Button>
           </div>
         </motion.div>
       </section>
       
       {/* Footer */}
-      <footer className="p-12 md:p-24 border-t-4 border-zinc-950 flex flex-col md:flex-row justify-between items-center gap-16 bg-white">
-        <div className="flex flex-col items-center md:items-start gap-4">
-          <div className="flex items-center gap-4">
-            <BrandLogo variant="full" size={56} />
-            <div className="text-6xl font-brutal-head tracking-tighter uppercase leading-none">Djassa</div>
-          </div>
-          <div className="text-xs font-black uppercase tracking-[0.3em] opacity-40">Operating System for Transport</div>
-        </div>
-        
-        <div className="flex flex-wrap justify-center gap-12 md:gap-24 uppercase font-black text-sm md:text-lg tracking-widest">
-          <div className="flex flex-col gap-6">
-            <h4 className="text-zinc-300 text-[10px] tracking-[0.5em]">PLATFORM</h4>
-            <a href="#" className="hover:line-through transition-all decoration-4">Fleet</a>
-            <a href="#" className="hover:line-through transition-all decoration-4">Drivers</a>
-            <a href="#" className="hover:line-through transition-all decoration-4">Missions</a>
-          </div>
-          <div className="flex flex-col gap-6">
-            <h4 className="text-zinc-300 text-[10px] tracking-[0.5em]">COMPANY</h4>
-            <a href="#" className="hover:line-through transition-all decoration-4">About</a>
-            <a href="#" className="hover:line-through transition-all decoration-4">Careers</a>
-            <a href="#" className="hover:line-through transition-all decoration-4">Contact</a>
-          </div>
-        </div>
+      <footer className="py-32 px-6 md:px-12 border-t border-zinc-100 bg-[#FAF9F6]">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-20 mb-32">
+            <div className="col-span-1 md:col-span-3 text-left">
+               <div className="flex items-center gap-4 mb-10 cursor-pointer" onClick={() => navigate("/") }>
+                <div className="bg-ivory-emerald p-2.5 rounded-[1.2rem] shadow-lg shadow-emerald-900/10">
+                  <BrandLogo variant="mark" size={30} className="text-white filter brightness-0 invert" />
+                </div>
+                <span className="text-3xl font-plus-jakarta font-extrabold uppercase tracking-tighter text-zinc-950">Djassa<span className="text-ivory-orange">OS</span></span>
+              </div>
+              <p className="text-zinc-500 text-lg font-medium max-w-sm leading-relaxed mb-12 text-left">
+                Le système d'exploitation de nouvelle génération conçu pour propulser les professionnels du transport routier en Côte d'Ivoire.
+              </p>
+              <div className="flex gap-8">
+                <div className="size-12 bg-white rounded-2xl shadow-sm border border-zinc-200 flex items-center justify-center text-zinc-400 hover:text-ivory-emerald hover:border-ivory-emerald transition-all cursor-pointer">
+                  <Globe className="size-6" />
+                </div>
+                <div className="size-12 bg-white rounded-2xl shadow-sm border border-zinc-200 flex items-center justify-center text-zinc-400 hover:text-ivory-emerald hover:border-ivory-emerald transition-all cursor-pointer">
+                  <Smartphone className="size-6" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="text-left">
+              <h5 className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-950 mb-10 text-left">Plateforme</h5>
+              <ul className="space-y-6 text-sm font-bold text-zinc-400 uppercase tracking-widest text-left">
+                <li className="hover:text-ivory-emerald transition-colors cursor-pointer text-left">Flotte</li>
+                <li className="hover:text-ivory-emerald transition-colors cursor-pointer text-left">Missions</li>
+                <li className="hover:text-ivory-emerald transition-colors cursor-pointer text-left">Chauffeurs</li>
+                <li className="hover:text-ivory-emerald transition-colors cursor-pointer text-left">Finances</li>
+              </ul>
+            </div>
 
-        <div className="flex flex-col items-center md:items-end gap-6">
-          <div className="flex gap-4">
-            <a href="#" className="w-12 h-12 border-2 border-zinc-950 flex items-center justify-center hover:bg-zinc-950 hover:text-white transition-all cursor-pointer">
-              <ChevronRight className="w-6 h-6" />
-            </a>
+            <div className="text-left">
+              <h5 className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-950 mb-10 text-left">Solutions</h5>
+              <ul className="space-y-6 text-sm font-bold text-zinc-400 uppercase tracking-widest text-left">
+                <li className="hover:text-ivory-emerald transition-colors cursor-pointer text-left">Transit</li>
+                <li className="hover:text-ivory-emerald transition-colors cursor-pointer text-left">Distribution</li>
+                <li className="hover:text-ivory-emerald transition-colors cursor-pointer text-left">Carburant</li>
+                <li className="hover:text-ivory-emerald transition-colors cursor-pointer text-left">Conformité</li>
+              </ul>
+            </div>
+
+            <div className="text-left">
+              <h5 className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-950 mb-10 text-left">Support</h5>
+              <ul className="space-y-6 text-sm font-bold text-zinc-400 uppercase tracking-widest text-left">
+                <li className="hover:text-ivory-emerald transition-colors cursor-pointer text-left">Aide</li>
+                <li className="hover:text-ivory-emerald transition-colors cursor-pointer text-left">Contact</li>
+                <li className="hover:text-ivory-emerald transition-colors cursor-pointer text-left">Statut</li>
+                <li className="hover:text-ivory-emerald transition-colors cursor-pointer text-left">Légal</li>
+              </ul>
+            </div>
           </div>
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">
-            © 2026 DJASSA INFRASTRUCTURE. ALL RIGHTS RESERVED.
+          
+          <div className="pt-12 border-t border-zinc-200/60 flex flex-col md:flex-row justify-between items-center gap-8">
+            <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-400">
+              © 2026 DJASSA INFRASTRUCTURE. DÉVELOPPÉ À ABIDJAN.
+            </div>
+            <div className="flex gap-12 text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-400">
+              <span className="hover:text-zinc-950 cursor-pointer transition-colors">Politique de Confidentialité</span>
+              <span className="hover:text-zinc-900 cursor-pointer transition-colors">Conditions d'Utilisation</span>
+            </div>
           </div>
         </div>
       </footer>
-
-      {/* Global Marquee Styles */}
-      <style>{`
-        @keyframes marquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .animate-marquee {
-          animation: marquee 40s linear infinite;
-        }
-      `}</style>
     </div>
   )
 }
