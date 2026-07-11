@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Gtran",
+    "slug": "gtran-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "gtran",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.gtran.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.gtran.mobile",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Gtran utilise votre position pour le suivi des missions."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Gtran utilise la caméra pour les preuves de livraison."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
