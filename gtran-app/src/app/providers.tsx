@@ -19,12 +19,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <AuthProvider>
         <TenantProvider>
           {children}
-          <Toaster 
-            position="top-right"
-            expand={false}
-            richColors
-            closeButton
-          />
+          <Toaster />
         </TenantProvider>
       </AuthProvider>
     </QueryClientProvider>
