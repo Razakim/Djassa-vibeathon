@@ -1,15 +1,37 @@
-# Gtran Mobile
+# Gtran Mobile — DjassaOS Terrain
 
-Application mobile (Expo + React Native) pour les acteurs terrain : **chauffeurs**, **gestionnaires nomades**, **clients** (signature livraison).
+App mobile **terrain** pour chauffeurs et exploitants nomades. Complète `gtran-app` (bureau) — pas un clone responsive.
 
-Complète `gtran-app` (web/desktop) et consomme la même API `gtran-api`.
+## Identité
 
-## Stack
+- **Marque** : DjassaOS (palette ivoirienne — émeraude `#00563B`, orange `#E25822`, or `#FFBF00`)
+- **Typo** : Plus Jakarta Sans (titres) + DM Sans (corps) — miroir web
+- **Signature UX** : `MissionCorridorCard`, `GooeyField`, `FieldDock`
 
-- **Expo SDK 53** + **Expo Router** (navigation fichier)
-- **React Native** + **TypeScript**
-- **TanStack Query** (données)
-- **expo-location** (GPS), **expo-camera** (preuves), **expo-notifications** (push)
+## Architecture (pas du boilerplate Expo)
+
+```
+app/                    # Routes Expo Router uniquement
+  (onboarding)/         # Auth brandée
+  (chauffeur)/          # Shell terrain + dock
+  (exploitant)/         # Shell pulse nomade
+
+src/
+  design-system/        # Tokens + primitives + brand (source de vérité visuelle)
+  shells/               # ChauffeurShell, ExploitantShell — navigation persona
+  navigation/           # resolve-home, dock-config
+  modules/              # Couche data (api, types, hooks) — miroir gtran-api
+  features/             # (V2) slices verticales métier
+```
+
+**Principe** : les écrans vivent dans `app/`, la logique UI métier dans `design-system/` + `shells/`, les données dans `modules/`. Pas de duplication `screens/` dans chaque module.
+
+## Personas
+
+| Persona | Shell | Dock |
+|---------|-------|------|
+| Chauffeur | `(chauffeur)` | Terrain · Courses · **GPS** · Radio · Moi |
+| Exploitant | `(exploitant)` | Pulse · Flotte · **Alertes** · Missions · Moi |
 
 ## Démarrage
 
@@ -20,21 +42,13 @@ npm install
 npx expo start
 ```
 
-## Personas V1
+**Démo chauffeur** : `kouame@gtran.ci` / `demo123`  
+**Démo exploitant** : `amadou@transafrique.ci` / `demo123`
 
-| Persona | Écrans prioritaires |
-|---------|---------------------|
-| Chauffeur | Missions, suivi GPS, livraison (photo + signature), messages |
-| Gestionnaire | Dashboard lite, alertes, flotte, missions |
-| Client | Notification livraison, signature (V2) |
+## V1 prioritaire
 
-## Arborescence
-
-Voir `arborescence-gtran-mobile.md` à la racine du monorepo.
-
-## Principes
-
-1. **Miroir API** — chaque module backend a son pendant dans `src/modules/`
-2. **Un canal WebSocket** — `lib/realtime/ws.ts` (batterie/data)
-3. **Multi-tenant** — `TenantProvider` scope toutes les requêtes
-4. **Offline-first V2** — file d'attente GPS et actions chauffeur
+1. Auth + routing par rôle
+2. Mission corridor + actions terrain
+3. GPS live → `gtran-api`
+4. Livraison photo + signature
+5. Push notifications dispatch

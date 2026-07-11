@@ -5,12 +5,12 @@ import { Providers } from "@/app/providers"
 export default function RootLayout() {
   return (
     <Providers>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false }}>
+      <StatusBar style="light" />
+      <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
         <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="(driver)" />
+        <Stack.Screen name="(onboarding)" />
+        <Stack.Screen name="(chauffeur)" />
+        <Stack.Screen name="(exploitant)" />
       </Stack>
     </Providers>
   )

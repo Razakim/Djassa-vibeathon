@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useMemo, useState } from "react"
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react"
 
 export interface AuthUser {
   id: string
@@ -9,27 +9,53 @@ export interface AuthUser {
 
 interface AuthContextValue {
   user: AuthUser | null
-  login: (email: string, password: string) => Promise<void>
+  bootstrapped: boolean
+  login: (email: string, password: string) => Promise<AuthUser>
   logout: () => void
+}
+
+const DEMO_USERS: Record<string, AuthUser> = {
+  "kouame@gtran.ci": {
+    id: "drv-1",
+    nom: "Kouamé N'Guessan",
+    email: "kouame@gtran.ci",
+    role: "chauffeur",
+  },
+  "amadou@transafrique.ci": {
+    id: "mgr-1",
+    nom: "Amadou Diallo",
+    email: "amadou@transafrique.ci",
+    role: "gestionnaire",
+  },
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
+  const [bootstrapped, setBootstrapped] = useState(false)
+
+  useEffect(() => {
+    // TODO: restaurer session depuis SecureStore
+    setBootstrapped(true)
+  }, [])
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
-      async login() {
-        // TODO: brancher gtran-api + SecureStore
-        setUser({ id: "demo", nom: "Demo", email: "demo@gtran.app", role: "chauffeur" })
+      bootstrapped,
+      async login(email, password) {
+        if (password !== "demo123") throw new Error("Identifiants incorrects")
+        const found = DEMO_USERS[email.toLowerCase()]
+        if (!found) throw new Error("Compte inconnu — utilisez un compte démo")
+        setUser(found)
+        return found
       },
       logout() {
         setUser(null)
       },
     }),
-    [user],
+    [user, bootstrapped],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
