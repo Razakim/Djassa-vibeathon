@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+gtran-app/node_modules/
+gtran-app/dist/
+.git/
+.env
+gtran-api/data/store.json
+gtran-api/.env
+*.md
+.kombai/
