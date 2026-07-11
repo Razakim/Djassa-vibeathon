@@ -16,7 +16,7 @@ const initialMessages: Message[] = [
   {
     role: "assistant",
     content:
-      "Bonjour ! Je suis votre assistant Gtran. Je peux vous aider à analyser vos données, résumer des missions ou répondre à vos questions sur la rentabilité. Je ne prends jamais de décisions à votre place.",
+      "Bonjour ! Je suis votre assistant Djassa. Je peux vous aider à analyser vos données, résumer des missions ou répondre à vos questions sur la rentabilité. Je ne prends jamais de décisions à votre place.",
   },
 ]
 

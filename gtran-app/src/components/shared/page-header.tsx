@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 interface PageHeaderProps {
   title: string
   description?: string
-  action?: { label: string; onClick?: () => void }
+  action?: { label: string; onClick?: () => void; disabled?: boolean }
   children?: ReactNode
 }
 
@@ -17,7 +17,11 @@ export function PageHeader({ title, description, action, children }: PageHeaderP
       </div>
       <div className="flex items-center gap-2">
         {children}
-        {action && <Button onClick={action.onClick}>{action.label}</Button>}
+        {action && (
+          <Button onClick={action.onClick} disabled={action.disabled}>
+            {action.label}
+          </Button>
+        )}
       </div>
     </div>
   )

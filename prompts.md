@@ -11,4 +11,4 @@ Wesh ! Très bien, mais coté design, c'est zéro ! shadc ui /chart , [imskyleen
 utilisation aussi de ça si possible ! https://ui.aceternity.com/components  : Gooey Input, Images Badge, Cover, Floating Dock   . Ou encore le labs(https://ui.aceternity.com/labs/gooey-dropdown par exemple)
 
 
- Bien. ça c'est le socle 01. Tu n'est qu'à 12% du front. Je veux que tu continu(les micro interactions, page de login/register, l'ajout de leaftlet modifié avec un système pour voir les lignes de trajets et autres. 
+ Bien. ça c'est le socle 01. Tu n'est qu'à 12% du front. Je veux que tu continu(les micro interactions, page de login/register, l'ajout de leaftlet modifié avec un système pour voir les lignes de trajets et autres. Le fonctionnement réel de tous les boutons, tous les modules...etc

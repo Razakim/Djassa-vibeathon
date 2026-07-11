@@ -1,47 +1,43 @@
+import { useState } from "react"
 import { AlertTriangle, Fuel } from "lucide-react"
+import { toast } from "sonner"
 import { PageHeader } from "@/components/shared/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { fuelRecords } from "@/lib/mock-data"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useFuelRecords, useFuelMutations } from "@/hooks/use-data"
 import { formatCurrency, formatDate } from "@/lib/utils"
 
 export function FuelPage() {
-  const anomalies = fuelRecords.filter((f) => f.anomalie)
+  const { data: records } = useFuelRecords()
+  const { create } = useFuelMutations()
+  const [open, setOpen] = useState(false)
+  const [form, setForm] = useState({ vehicule: "", station: "", litres: 0, montant: 0, conso: 30 })
+
+  const total = records?.reduce((s, f) => s + f.montant, 0) ?? 0
+  const anomalies = records?.filter((f) => f.anomalie) ?? []
+  const avgConso = records?.length ? (records.reduce((s, f) => s + f.conso, 0) / records.length).toFixed(1) : "0"
+
+  const handleAdd = async () => {
+    if (!form.vehicule) return
+    const anomalie = form.conso > 38
+    await create.mutateAsync({ ...form, anomalie, date: new Date().toISOString().slice(0, 10) })
+    toast.success(anomalie ? "Plein enregistré — anomalie détectée" : "Plein enregistré")
+    setOpen(false)
+  }
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Gestion du carburant"
-        description="Pleins, consommation, stations et détection d'anomalies"
-        action={{ label: "Enregistrer un plein" }}
-      />
+      <PageHeader title="Gestion du carburant" description="Pleins, consommation et anomalies" action={{ label: "Enregistrer un plein", onClick: () => setOpen(true) }} />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="pt-6 flex items-center gap-3">
-            <Fuel className="size-8 text-blue-400" />
-            <div>
-              <p className="text-2xl font-bold">8,45 M</p>
-              <p className="text-sm text-muted-foreground">Coût ce mois (XOF)</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-2xl font-bold">31,2 L</p>
-            <p className="text-sm text-muted-foreground">Consommation moyenne /100km</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6 flex items-center gap-3">
-            <AlertTriangle className="size-8 text-amber-400" />
-            <div>
-              <p className="text-2xl font-bold">{anomalies.length}</p>
-              <p className="text-sm text-muted-foreground">Anomalies détectées</p>
-            </div>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="pt-6 flex items-center gap-3"><Fuel className="size-8 text-blue-400" /><div><p className="text-2xl font-bold">{formatCurrency(total)}</p><p className="text-sm text-muted-foreground">Ce mois</p></div></CardContent></Card>
+        <Card><CardContent className="pt-6"><p className="text-2xl font-bold">{avgConso} L</p><p className="text-sm text-muted-foreground">Moyenne /100km</p></CardContent></Card>
+        <Card><CardContent className="pt-6 flex items-center gap-3"><AlertTriangle className="size-8 text-amber-400" /><div><p className="text-2xl font-bold">{anomalies.length}</p><p className="text-sm text-muted-foreground">Anomalies</p></div></CardContent></Card>
       </div>
 
       <Card>
@@ -53,13 +49,13 @@ export function FuelPage() {
                 <TableHead>Station</TableHead>
                 <TableHead>Litres</TableHead>
                 <TableHead>Montant</TableHead>
-                <TableHead>Conso L/100</TableHead>
+                <TableHead>Conso</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Anomalie</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {fuelRecords.map((f) => (
+              {records?.map((f) => (
                 <TableRow key={f.id}>
                   <TableCell className="font-mono">{f.vehicule}</TableCell>
                   <TableCell>{f.station}</TableCell>
@@ -67,19 +63,32 @@ export function FuelPage() {
                   <TableCell>{formatCurrency(f.montant)}</TableCell>
                   <TableCell>{f.conso}</TableCell>
                   <TableCell>{formatDate(f.date)}</TableCell>
-                  <TableCell>
-                    {f.anomalie ? (
-                      <Badge variant="warning">+18% surconso</Badge>
-                    ) : (
-                      <Badge variant="success">Normal</Badge>
-                    )}
-                  </TableCell>
+                  <TableCell>{f.anomalie ? <Badge variant="warning">Surconso</Badge> : <Badge variant="success">OK</Badge>}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Enregistrer un plein</DialogTitle></DialogHeader>
+          <div className="grid gap-3">
+            <div><Label>Véhicule</Label><Input value={form.vehicule} onChange={(e) => setForm({ ...form, vehicule: e.target.value })} /></div>
+            <div><Label>Station</Label><Input value={form.station} onChange={(e) => setForm({ ...form, station: e.target.value })} /></div>
+            <div className="grid grid-cols-3 gap-3">
+              <div><Label>Litres</Label><Input type="number" value={form.litres} onChange={(e) => setForm({ ...form, litres: +e.target.value })} /></div>
+              <div><Label>Montant</Label><Input type="number" value={form.montant} onChange={(e) => setForm({ ...form, montant: +e.target.value })} /></div>
+              <div><Label>Conso</Label><Input type="number" value={form.conso} onChange={(e) => setForm({ ...form, conso: +e.target.value })} /></div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
+            <Button onClick={handleAdd}>Enregistrer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
