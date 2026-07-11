@@ -1,46 +1,20 @@
 from __future__ import annotations
 
-import json
-import threading
-from pathlib import Path
-from typing import Callable, TypeVar
-
+from typing import TypeVar
 from app.config import settings
-from app.data.seed import create_seed_store
-from app.schemas import AppStore
+from supabase import create_client, Client
 
 T = TypeVar("T")
 
-_lock = threading.Lock()
+_supabase_client: Client | None = None
 
-
-def _store_path() -> Path:
-    p = Path(settings.store_path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    return p
-
-
-def _load() -> AppStore:
-    path = _store_path()
-    if not path.exists():
-        store = create_seed_store()
-        _save_unlocked(store)
-        return store
-    data = json.loads(path.read_text(encoding="utf-8"))
-    return AppStore.model_validate(data)
-
-
-def _save_unlocked(store: AppStore) -> None:
-    path = _store_path()
-    path.write_text(
-        json.dumps(store.model_dump(mode="json", by_alias=True), ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-
-
-def get_store() -> AppStore:
-    with _lock:
-        return _load()
+def get_supabase() -> Client:
+    global _supabase_client
+    if _supabase_client is None:
+        if not settings.supabase_url or not settings.supabase_key:
+            raise RuntimeError("Variables SUPABASE_URL et SUPABASE_KEY manquantes pour le mode Production SQL")
+        _supabase_client = create_client(settings.supabase_url, settings.supabase_key)
+    return _supabase_client
 
 
 def save_store(store: AppStore) -> None:

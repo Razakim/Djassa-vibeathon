@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     store_path: str = "data/store.json"
     port: int = 8000
     environment: str = "development"
+    supabase_url: str = ""
+    supabase_key: str = ""
 
     @property
     def cors_origins(self) -> list[str]:

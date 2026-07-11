@@ -34,7 +34,7 @@ export function RegisterPage() {
   }
 
   return (
-    <AuthLayout title="Créer un compte" subtitle="Rejoignez Djassa pour piloter votre flotte">
+    <AuthLayout title="Créer un compte" subtitle="Rejoignez Djassa pour piloter votre flotte" backTo="/login">
       <motion.form
         onSubmit={handleSubmit}
         className="space-y-4"

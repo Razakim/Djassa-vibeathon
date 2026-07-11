@@ -19,12 +19,14 @@ services:
         restart_limit: 3
     env:
       - key: JWT_SECRET
-        secret: jwt-secret
+        secret: JWT_SECRET
       - key: ALLOWED_ORIGINS
         value: https://your-app.vercel.app,http://localhost:5173
       - key: CORS_ORIGIN_REGEX
         value: https://.*\.vercel\.app
       - key: ENVIRONMENT
         value: production
-      - key: STORE_PATH
-        value: data/store.json
+      - key: SUPABASE_URL
+        secret: SUPABASE_URL
+      - key: SUPABASE_KEY
+        secret: SUPABASE_KEY

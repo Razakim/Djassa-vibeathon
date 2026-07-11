@@ -1,76 +1,42 @@
 from __future__ import annotations
+from supabase import Client
 
-from app.domain.alerts_engine import compute_alerts
-from app.domain.mission_workflow import refresh_store_alerts, uid
-from app.schemas import (
-    AppStore,
-    Document,
-    Driver,
-    Employee,
-    FuelRecord,
-    Invoice,
-    MaintenanceItem,
-    Message,
-    Payment,
-    Vehicle,
-)
+def filter_agence(query, agence_id: str | None):
+    if agence_id:
+        return query.eq("agenceId", agence_id)
+    return query
 
-CLS_MAP = {
-    "vehicles": Vehicle,
-    "drivers": Driver,
-    "documents": Document,
-    "invoices": Invoice,
-    "payments": Payment,
-    "maintenanceItems": MaintenanceItem,
-    "fuelRecords": FuelRecord,
-    "employees": Employee,
-    "messages": Message,
-}
+def list_collection(supabase: Client, table: str, agence_id: str | None = None):
+    query = supabase.table(table).select("*")
+    query = filter_agence(query, agence_id)
+    response = query.execute()
+    return response.data
 
+def create_item(supabase: Client, table: str, data: dict):
+    from app.domain.mission_workflow import uid
+    entry = {**data, "id": data.get("id") or uid(table[:3])}
+    response = supabase.table(table).insert(entry).execute()
+    if not response.data:
+        raise ValueError("Erreur lors de la création")
+    return response.data[0]
 
-def filter_agence(items, agence_id: str | None):
-    if not agence_id:
-        return items
-    return [i for i in items if i.agenceId == agence_id]
-
-
-def list_collection(store: AppStore, key: str, agence_id: str | None = None):
-    return filter_agence(getattr(store, key), agence_id)
-
-
-def create_item(store: AppStore, key: str, data: dict) -> AppStore:
-    cls = CLS_MAP[key]
-    items = list(getattr(store, key))
-    entry = {**data, "id": data.get("id") or uid(key[:3])}
-    items.append(cls.model_validate(entry))
-    return refresh_store_alerts(store.model_copy(update={key: items}))
-
-
-def update_item(store: AppStore, key: str, item_id: str, patch: dict) -> tuple[AppStore, object]:
-    items = []
-    updated = None
-    for item in getattr(store, key):
-        if item.id == item_id:
-            updated = item.model_copy(update=patch)
-            items.append(updated)
-        else:
-            items.append(item)
-    if updated is None:
+def update_item(supabase: Client, table: str, item_id: str, patch: dict):
+    response = supabase.table(table).update(patch).eq("id", item_id).execute()
+    if not response.data:
         raise ValueError("Élément introuvable")
-    return refresh_store_alerts(store.model_copy(update={key: items})), updated
+    return response.data[0]
 
+def delete_item(supabase: Client, table: str, item_id: str):
+    supabase.table(table).delete().eq("id", item_id).execute()
 
-def delete_item(store: AppStore, key: str, item_id: str) -> AppStore:
-    items = [i for i in getattr(store, key) if i.id != item_id]
-    return refresh_store_alerts(store.model_copy(update={key: items}))
-
-
-def search_global(store: AppStore, query: str, agence_id: str | None = None):
-    q = query.lower()
-    missions = [m for m in filter_agence(store.missions, agence_id) if q in m.id.lower() or q in m.client.lower()]
-    vehicles = [
-        v for v in filter_agence(store.vehicles, agence_id)
-        if q in v.immatriculation.lower() or q in (v.chauffeur or "").lower()
-    ]
-    drivers = [d for d in filter_agence(store.drivers, agence_id) if q in d.nom.lower()]
+def search_global(supabase: Client, query: str, agence_id: str | None = None):
+    q = f"%{query}%"
+    m_query = supabase.table("missions").select("*").or_(f"id.ilike.{q},client.ilike.{q}")
+    v_query = supabase.table("vehicles").select("*").or_(f"immatriculation.ilike.{q},chauffeur.ilike.{q}")
+    d_query = supabase.table("drivers").select("*").or_(f"nom.ilike.{q}")
+    
+    missions = filter_agence(m_query, agence_id).execute().data
+    vehicles = filter_agence(v_query, agence_id).execute().data
+    drivers = filter_agence(d_query, agence_id).execute().data
+    
     return {"missions": missions, "vehicles": vehicles, "drivers": drivers}

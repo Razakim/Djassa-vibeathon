@@ -29,7 +29,7 @@ export function LoginPage() {
   }
 
   return (
-    <AuthLayout title="Bon retour" subtitle="Connectez-vous à votre plateforme de transport">
+    <AuthLayout title="Bon retour" subtitle="Connectez-vous à votre plateforme de transport" backTo="/">
       <motion.form
         onSubmit={handleSubmit}
         className="space-y-4"

@@ -1,4 +1,5 @@
 import { type ReactNode } from "react"
+import { Link } from "react-router-dom"
 import { motion } from "motion/react"
 import { MapPin, Shield, BarChart3 } from "lucide-react"
 import { BrandLogo } from "@/components/shared/brand-logo"
@@ -13,9 +14,10 @@ interface AuthLayoutProps {
   children: ReactNode
   title: string
   subtitle: string
+  backTo?: string
 }
 
-export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
+export function AuthLayout({ children, title, subtitle, backTo }: AuthLayoutProps) {
   return (
     <div className="relative flex min-h-screen">
       <motion.div
@@ -86,6 +88,12 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
           className="w-full max-w-md space-y-6"
         >
           <div className="flex flex-col items-center gap-2 text-center lg:items-start lg:text-left">
+            {backTo && (
+              <Link to={backTo} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-2 self-start lg:self-start">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                Retour
+              </Link>
+            )}
             <BrandLogo variant="full" size={48} className="lg:hidden" />
             <h1 className="text-2xl font-bold">{title}</h1>
             <p className="text-sm text-muted-foreground">{subtitle}</p>

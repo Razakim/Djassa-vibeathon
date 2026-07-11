@@ -12,3 +12,6 @@ utilisation aussi de ça si possible ! https://ui.aceternity.com/components  : G
 
 
  Bien. ça c'est le socle 01. Tu n'est qu'à 12% du front. Je veux que tu continu(les micro interactions, page de login/register, l'ajout de leaftlet modifié avec un système pour voir les lignes de trajets et autres. Le fonctionnement réel de tous les boutons, tous les modules...etc
+
+
+ très bien ! maintenant concernant tout le projet(fait un tree/f si necessaire), je constate que on a pas de base de donnée. Il faudraot qe le back'sur koyeb) communique avec supabase pour afficher les infos ! Si aucune données on puisse tout de même accéder avec le compte demo et les donnée mockées !
