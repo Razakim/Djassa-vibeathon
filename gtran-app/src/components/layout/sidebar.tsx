@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom"
-import { ChevronLeft, ChevronRight, Truck } from "lucide-react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { BrandLogo } from "@/components/shared/brand-logo"
 import { motion, AnimatePresence } from "motion/react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
@@ -33,9 +34,7 @@ export function Sidebar() {
             collapsed ? "justify-center px-0" : "gap-2 px-4"
           )}
         >
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <Truck className="size-4" />
-          </div>
+          <BrandLogo variant="mark" size={collapsed ? 28 : 32} />
           <AnimatePresence>
             {!collapsed && (
               <motion.div

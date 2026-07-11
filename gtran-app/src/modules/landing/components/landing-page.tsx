@@ -6,6 +6,7 @@ import {
   ChevronRight
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { BrandLogo } from "@/components/shared/brand-logo"
 
 export function LandingPage() {
   const navigate = useNavigate()
@@ -15,7 +16,7 @@ export function LandingPage() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b-2 border-zinc-950 bg-white/95 backdrop-blur-md px-6 md:px-12 py-5 flex items-center justify-between">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
-          <div className="w-10 h-10 bg-zinc-950 flex items-center justify-center text-white font-brutal-head text-2xl">D</div>
+          <BrandLogo variant="full" size={40} />
           <span className="text-3xl font-brutal-head tracking-tighter uppercase">Djassa</span>
         </div>
         
@@ -266,7 +267,10 @@ export function LandingPage() {
       {/* Footer */}
       <footer className="p-12 md:p-24 border-t-4 border-zinc-950 flex flex-col md:flex-row justify-between items-center gap-16 bg-white">
         <div className="flex flex-col items-center md:items-start gap-4">
-          <div className="text-6xl font-brutal-head tracking-tighter uppercase leading-none">Djassa</div>
+          <div className="flex items-center gap-4">
+            <BrandLogo variant="full" size={56} />
+            <div className="text-6xl font-brutal-head tracking-tighter uppercase leading-none">Djassa</div>
+          </div>
           <div className="text-xs font-black uppercase tracking-[0.3em] opacity-40">Operating System for Transport</div>
         </div>
         

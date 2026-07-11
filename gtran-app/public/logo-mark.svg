@@ -1,13 +1,12 @@
-<svg viewBox="0 0 690 690" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Djassa">
+<svg viewBox="180 160 330 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Djassa">
   <defs>
-    <linearGradient id="metal2" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="d-metal" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#ffffff"/>
       <stop offset="40%" stop-color="#efefef"/>
       <stop offset="72%" stop-color="#9a9a9a"/>
       <stop offset="100%" stop-color="#5f5f5f"/>
     </linearGradient>
   </defs>
-  <rect x="0" y="0" width="680" height="680" rx="140" fill="#050505"/>
   <path d="M200,170 L300,170 C400,170 490,230 490,340 C490,450 400,510 300,510 L240,510 L200,470 Z M300,225 C380,225 440,270 440,340 C440,410 380,455 300,455 Z" fill="#242424" fill-rule="evenodd" transform="translate(12,12)"/>
-  <path d="M200,170 L300,170 C400,170 490,230 490,340 C490,450 400,510 300,510 L240,510 L200,470 Z M300,225 C380,225 440,270 440,340 C440,410 380,455 300,455 Z" fill="url(#metal2)" fill-rule="evenodd"/>
+  <path d="M200,170 L300,170 C400,170 490,230 490,340 C490,450 400,510 300,510 L240,510 L200,470 Z M300,225 C380,225 440,270 440,340 C440,410 380,455 300,455 Z" fill="url(#d-metal)" fill-rule="evenodd"/>
 </svg>

@@ -1,6 +1,7 @@
 import { type ReactNode } from "react"
 import { motion } from "motion/react"
-import { Truck, MapPin, Shield, BarChart3 } from "lucide-react"
+import { MapPin, Shield, BarChart3 } from "lucide-react"
+import { BrandLogo } from "@/components/shared/brand-logo"
 
 const FEATURES = [
   { icon: MapPin, text: "Suivi GPS temps réel de votre flotte" },
@@ -35,9 +36,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
         />
 
         <div className="relative z-10 flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-white/10 backdrop-blur">
-            <Truck className="size-6" />
-          </div>
+          <BrandLogo variant="mark" size={44} />
           <div>
             <p className="text-xl font-bold">Djassa</p>
             <p className="text-sm text-white/60">Operating System du transport</p>
@@ -87,9 +86,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
           className="w-full max-w-md space-y-6"
         >
           <div className="flex flex-col items-center gap-2 text-center lg:items-start lg:text-left">
-            <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground lg:hidden">
-              <Truck className="size-6" />
-            </div>
+            <BrandLogo variant="full" size={48} className="lg:hidden" />
             <h1 className="text-2xl font-bold">{title}</h1>
             <p className="text-sm text-muted-foreground">{subtitle}</p>
           </div>

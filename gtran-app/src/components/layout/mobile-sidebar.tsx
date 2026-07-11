@@ -2,7 +2,8 @@ import { useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { NavLink } from "react-router-dom"
 import { motion, AnimatePresence } from "motion/react"
-import { Truck, X } from "lucide-react"
+import { X } from "lucide-react"
+import { BrandLogo } from "@/components/shared/brand-logo"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -55,9 +56,7 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
             aria-label="Menu de navigation"
           >
             <div className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-              <div className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <Truck className="size-4" />
-              </div>
+              <BrandLogo variant="mark" size={32} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold">Djassa</p>
                 <p className="text-xs text-muted-foreground">Transport & Logistique</p>
