@@ -1,43 +1,39 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/shared/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { TransportMap } from "@/components/map/transport-map"
+import { MissionWizardDialog, type MissionFormData } from "@/components/missions/mission-wizard-dialog"
 import { MissionStatusBadge } from "@/components/shared/status-badge"
 import { formatCurrency } from "@/lib/utils"
 import { useMissions, useMissionMutations, useDrivers, useVehicles } from "@/hooks/use-data"
 import { interpolateRoute } from "@/lib/geo/cities"
 import type { MissionStatus } from "@/types/shared"
-import { Search, Trash2, Play, CheckCircle } from "lucide-react"
-
-const CITIES = ["Abidjan", "Bouaké", "San Pedro", "Yamoussoukro", "Dakar", "Ferkessédougou"]
+import { Search, Trash2, Play, CheckCircle, XCircle } from "lucide-react"
 
 export function MissionsPage() {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { data: missions, isLoading } = useMissions()
   const { data: drivers } = useDrivers()
   const { data: vehicles } = useVehicles()
-  const { create, update, remove } = useMissionMutations()
+  const { create, transition, remove } = useMissionMutations()
   const [search, setSearch] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [form, setForm] = useState({
-    client: "", depart: "Abidjan", destination: "Bouaké", marchandise: "", poids: "20 t",
-    chauffeur: "", vehicule: "", prix: 1000000, cout: 600000,
-  })
+
+  useEffect(() => {
+    if (searchParams.get("create") === "1") {
+      setDialogOpen(true)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
@@ -60,28 +56,61 @@ export function MissionsPage() {
     [missions]
   )
 
-  const handleCreate = async () => {
-    if (!form.client || !form.marchandise) {
-      toast.error("Remplissez les champs obligatoires")
-      return
+  const handleCreate = async (form: MissionFormData) => {
+    try {
+      const result = await create.mutateAsync({
+        client: form.client,
+        depart: form.depart,
+        destination: form.destination,
+        marchandise: form.marchandise,
+        poids: form.poids,
+        driverId: form.driverId || undefined,
+        vehicleId: form.vehicleId || undefined,
+        prix: form.prix,
+        cout: form.cout,
+      })
+      toast.success(`Mission ${result.id} créée`, {
+        description: `${result.chauffeur} — ${result.vehicule}`,
+        action: {
+          label: "Voir sur la carte",
+          onClick: () => navigate(`/tracking?mission=${result.id}`),
+        },
+      })
+      setDialogOpen(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur à la création")
+      throw e
     }
-    if (!form.chauffeur || !form.vehicule) {
-      toast.error("Sélectionnez un chauffeur et un véhicule")
-      return
-    }
-    await create.mutateAsync({
-      ...form,
-      statut: "planifiee",
-      chauffeur: form.chauffeur,
-    })
-    toast.success("Mission créée")
-    setDialogOpen(false)
-    setForm({ client: "", depart: "Abidjan", destination: "Bouaké", marchandise: "", poids: "20 t", chauffeur: "", vehicule: "", prix: 1000000, cout: 600000 })
   }
 
   const changeStatus = async (id: string, statut: MissionStatus) => {
-    await update.mutateAsync({ id, statut, progress: statut === "livree" ? 1 : statut === "en_cours" ? 0.45 : undefined })
-    toast.success(`Statut mis à jour : ${statut}`)
+    try {
+      const result = await transition.mutateAsync({ id, statut })
+      const m = result.mission
+      if (statut === "en_cours") {
+        toast.success(`Mission ${m.id} démarrée`, {
+          description: `${m.vehicule} en route vers ${m.destination}`,
+          action: {
+            label: "Voir sur la carte",
+            onClick: () => navigate(`/tracking?mission=${m.id}`),
+          },
+        })
+      } else if (statut === "livree") {
+        toast.success(`Mission ${m.id} livrée`, {
+          description: result.invoice ? `Facture ${result.invoice.id} générée` : undefined,
+          action: result.invoice
+            ? {
+                label: "Voir la facture",
+                onClick: () => navigate("/billing"),
+              }
+            : undefined,
+        })
+      } else if (statut === "annulee") {
+        toast.info(`Mission ${m.id} annulée`, { description: "Véhicule et chauffeur libérés" })
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Transition impossible")
+    }
   }
 
   return (
@@ -138,9 +167,14 @@ export function MissionsPage() {
                           </Button>
                         )}
                         {(m.statut === "en_cours" || m.statut === "en_retard") && (
-                          <Button size="icon" variant="ghost" title="Livrer" onClick={() => changeStatus(m.id, "livree")}>
-                            <CheckCircle className="size-4" />
-                          </Button>
+                          <>
+                            <Button size="icon" variant="ghost" title="Livrer" onClick={() => changeStatus(m.id, "livree")}>
+                              <CheckCircle className="size-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" title="Annuler" onClick={() => changeStatus(m.id, "annulee")}>
+                              <XCircle className="size-4 text-destructive" />
+                            </Button>
+                          </>
                         )}
                         <Button size="icon" variant="ghost" title="Supprimer" onClick={() => setDeleteId(m.id)}>
                           <Trash2 className="size-4 text-destructive" />
@@ -155,63 +189,14 @@ export function MissionsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Nouvelle mission</DialogTitle></DialogHeader>
-          <div className="grid gap-3">
-            <div><Label>Client</Label><Input value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Départ</Label>
-                <Select value={form.depart} onValueChange={(v) => setForm({ ...form, depart: v })}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>{CITIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Destination</Label>
-                <Select value={form.destination} onValueChange={(v) => setForm({ ...form, destination: v })}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>{CITIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div><Label>Marchandise</Label><Input value={form.marchandise} onChange={(e) => setForm({ ...form, marchandise: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Chauffeur</Label>
-                <Select value={form.chauffeur} onValueChange={(v) => setForm({ ...form, chauffeur: v })}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                  <SelectContent>
-                    {drivers?.filter((d) => d.statut === "disponible").map((d) => (
-                      <SelectItem key={d.id} value={d.nom}>{d.nom}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Véhicule</Label>
-                <Select value={form.vehicule} onValueChange={(v) => setForm({ ...form, vehicule: v })}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                  <SelectContent>
-                    {vehicles?.filter((v) => v.statut === "disponible").map((v) => (
-                      <SelectItem key={v.id} value={v.immatriculation}>{v.immatriculation} — {v.type}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Prix (XOF)</Label><Input type="number" value={form.prix} onChange={(e) => setForm({ ...form, prix: +e.target.value })} /></div>
-              <div><Label>Coût (XOF)</Label><Input type="number" value={form.cout} onChange={(e) => setForm({ ...form, cout: +e.target.value })} /></div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
-            <Button onClick={handleCreate} disabled={create.isPending}>Créer</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MissionWizardDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        drivers={drivers ?? []}
+        vehicles={vehicles ?? []}
+        loading={create.isPending}
+        onSubmit={handleCreate}
+      />
 
       <ConfirmDialog
         open={!!deleteId}
@@ -223,9 +208,13 @@ export function MissionsPage() {
         loading={remove.isPending}
         onConfirm={async () => {
           if (deleteId) {
-            await remove.mutateAsync(deleteId)
-            toast.success("Mission supprimée")
-            setDeleteId(null)
+            try {
+              await remove.mutateAsync(deleteId)
+              toast.success("Mission supprimée")
+              setDeleteId(null)
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Suppression impossible")
+            }
           }
         }}
       />

@@ -49,10 +49,10 @@ export function FleetPage() {
   const handleSave = async () => {
     if (!form.immatriculation) { toast.error("Immatriculation requise"); return }
     if (editId) {
-      await update.mutateAsync({ id: editId, ...form, chauffeur: null, disponibilite: form.statut === "disponible" ? 100 : 0 })
+      await update.mutateAsync({ id: editId, ...form, chauffeur: null, driverId: null, disponibilite: form.statut === "disponible" ? 100 : 0 })
       toast.success("Véhicule mis à jour")
     } else {
-      await create.mutateAsync({ ...form, chauffeur: null, disponibilite: 100 })
+      await create.mutateAsync({ ...form, chauffeur: null, driverId: null, disponibilite: 100 })
       toast.success("Véhicule ajouté")
     }
     setDialogOpen(false)

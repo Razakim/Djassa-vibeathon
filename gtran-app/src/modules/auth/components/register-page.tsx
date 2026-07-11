@@ -25,7 +25,7 @@ export function RegisterPage() {
     try {
       await register({ nom, email, password })
       toast.success("Compte créé avec succès")
-      navigate("/")
+      navigate("/dashboard")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erreur d'inscription")
     } finally {

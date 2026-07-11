@@ -20,7 +20,7 @@ export function LoginPage() {
     try {
       await login(email, password)
       toast.success("Connexion réussie")
-      navigate("/")
+      navigate("/dashboard")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erreur de connexion")
     } finally {

@@ -2,6 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useTenant } from "@/lib/tenant"
 import * as api from "@/lib/mock-api"
 import type { Mission } from "@/types/entities"
+import {
+  buildRevenueChart,
+  countExpiringDocuments,
+  sumFuelThisMonth,
+  sumLivreesThisMonth,
+} from "@/lib/dashboard-stats"
 
 function useAgenceId() {
   const { agenceId } = useTenant()
@@ -69,6 +75,11 @@ export function useMissionMutations() {
     create: useMutation({
       mutationFn: (data: Omit<Parameters<typeof api.createMission>[0], "agenceId">) =>
         api.createMission({ ...data, agenceId }),
+      onSuccess: invalidate,
+    }),
+    transition: useMutation({
+      mutationFn: ({ id, statut }: { id: string; statut: Parameters<typeof api.transitionMission>[1] }) =>
+        api.transitionMission(id, statut),
       onSuccess: invalidate,
     }),
     update: useMutation({
@@ -258,13 +269,18 @@ export function useDashboardStats() {
   const { data: documents } = useDocuments()
   const { data: fuel } = useFuelRecords()
 
-  const missionsEnCours = missions?.filter((m) => m.statut === "en_cours" || m.statut === "en_retard").length ?? 0
-  const missionsEnRetard = missions?.filter((m) => m.statut === "en_retard").length ?? 0
+  const missionsList = missions ?? []
+  const fuelList = fuel ?? []
+  const monthStats = sumLivreesThisMonth(missionsList)
+
+  const missionsEnCours = missionsList.filter((m) => m.statut === "en_cours" || m.statut === "en_retard").length
+  const missionsEnRetard = missionsList.filter((m) => m.statut === "en_retard").length
   const vehiculesDisponibles = vehicles?.filter((v) => v.statut === "disponible").length ?? 0
-  const revenusMois = missions?.reduce((s, m) => s + m.prix, 0) ?? 0
-  const depensesMois = missions?.reduce((s, m) => s + m.cout, 0) ?? 0
-  const carburantMois = fuel?.reduce((s, f) => s + f.montant, 0) ?? 0
-  const documentsExpirant = documents?.filter((d) => d.statut === "expire_bientot").length ?? 0
+  const revenusMois = monthStats.revenus
+  const depensesMois = monthStats.depenses + sumFuelThisMonth(fuelList)
+  const carburantMois = sumFuelThisMonth(fuelList)
+  const documentsExpirant = countExpiringDocuments(documents ?? [])
+  const revenueChart = buildRevenueChart(missionsList, fuelList)
 
   return {
     vehiculesDisponibles,
@@ -275,5 +291,7 @@ export function useDashboardStats() {
     carburantMois,
     alertes: alerts?.length ?? 0,
     documentsExpirant,
+    missionsLivreesMois: monthStats.count,
+    revenueChart,
   }
 }

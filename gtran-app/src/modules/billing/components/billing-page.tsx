@@ -86,6 +86,9 @@ export function BillingPage() {
         <TabsContent value="relances" className="mt-4">
           <Card>
             <CardContent className="pt-6 space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Les relances automatiques sont envoyées chaque jour pour les factures en retard (Cas 8).
+              </p>
               {overdue.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Aucune relance en attente</p>
               ) : (
@@ -94,6 +97,9 @@ export function BillingPage() {
                     <div>
                       <p className="font-medium">{inv.client} — {inv.id}</p>
                       <p className="text-sm text-muted-foreground">{formatCurrency(inv.montant)}</p>
+                      {inv.lastReminderAt && (
+                        <p className="text-xs text-muted-foreground">Dernière relance : {formatDate(inv.lastReminderAt)}</p>
+                      )}
                     </div>
                     <Button size="sm" onClick={() => handleReminder(inv.id, inv.client)}>Envoyer relance</Button>
                   </div>

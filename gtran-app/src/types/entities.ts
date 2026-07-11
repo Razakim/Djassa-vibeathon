@@ -6,6 +6,7 @@ export interface Vehicle {
   immatriculation: string
   type: string
   statut: VehicleStatus
+  driverId: string | null
   chauffeur: string | null
   km: number
   conso: number
@@ -33,6 +34,8 @@ export interface Mission {
   destination: string
   marchandise: string
   poids: string
+  driverId: string
+  vehicleId: string
   chauffeur: string
   vehicule: string
   statut: MissionStatus
@@ -41,6 +44,7 @@ export interface Mission {
   agenceId: string
   route: LatLng[]
   progress: number
+  createdAt?: string
 }
 
 export interface Document {
@@ -50,6 +54,9 @@ export interface Document {
   expiration: string
   statut: string
   agenceId: string
+  missionId?: string
+  vehicleId?: string
+  driverId?: string
 }
 
 export interface Invoice {
@@ -59,6 +66,8 @@ export interface Invoice {
   echeance: string
   statut: PaymentStatus
   agenceId: string
+  missionId?: string
+  lastReminderAt?: string
 }
 
 export interface Payment {
@@ -70,10 +79,12 @@ export interface Payment {
   statut: PaymentStatus
   date: string
   agenceId: string
+  invoiceId?: string
 }
 
 export interface MaintenanceItem {
   id: string
+  vehicleId: string
   vehicule: string
   type: string
   echeance: string
@@ -84,6 +95,7 @@ export interface MaintenanceItem {
 
 export interface FuelRecord {
   id: string
+  vehicleId: string
   vehicule: string
   station: string
   litres: number
@@ -120,6 +132,8 @@ export interface Alert {
   message: string
   severity: "info" | "warning" | "danger"
   agenceId: string
+  entityId?: string
+  href?: string
 }
 
 export interface TrackingVehicle {
@@ -132,6 +146,8 @@ export interface TrackingVehicle {
   arret: string
   coords: LatLng
   missionId?: string
+  vehicleId?: string
+  driverId?: string
 }
 
 export interface AgenceDetail {
@@ -163,7 +179,6 @@ export interface AppStore {
   employees: Employee[]
   messages: Message[]
   alerts: Alert[]
-  trackingVehicles: TrackingVehicle[]
   agences: AgenceDetail[]
   accounts: AuthAccount[]
 }

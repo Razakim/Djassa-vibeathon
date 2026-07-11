@@ -1,17 +1,22 @@
 import { useNavigate } from "react-router-dom"
-import { AlertTriangle, Fuel, MapPin, Route, TrendingDown, TrendingUp, Truck } from "lucide-react"
+import { AlertTriangle, FileWarning, Fuel, MapPin, Route, TrendingDown, TrendingUp, Truck } from "lucide-react"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { PageHeader } from "@/components/shared/page-header"
 import { StatCard } from "@/components/shared/stat-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { revenueChart } from "@/lib/mock-data"
 import { formatCurrency } from "@/lib/utils"
 import { MissionStatusBadge } from "@/components/shared/status-badge"
 import { StaggerItem, StaggerList } from "@/components/shared/animated-page"
 import { TransportMap } from "@/components/map/transport-map"
 import { useAlerts, useDashboardStats, useMissions, useTracking } from "@/hooks/use-data"
+
+const MORNING = new Intl.DateTimeFormat("fr-FR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+}).format(new Date())
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -21,37 +26,79 @@ export function DashboardPage() {
   const { data: tracking } = useTracking()
   const marge = stats.revenusMois - stats.depensesMois
 
-  const mapVehicles = (tracking ?? []).map((t) => ({
-    id: t.id,
-    label: t.immatriculation,
-    subtitle: `${t.chauffeur} — ${t.vitesse} km/h`,
-    coords: t.coords,
-    missionId: t.missionId,
-  }))
+  const priorityMissions = (missions ?? [])
+    .filter((m) => m.statut === "en_retard" || m.statut === "en_cours")
+    .slice(0, 4)
+
+  const recentMissions = priorityMissions.length > 0 ? priorityMissions : (missions ?? []).slice(0, 4)
+
+  const mapVehicles = (tracking ?? [])
+    .filter((t) => t.missionId)
+    .map((t) => ({
+      id: t.id,
+      label: t.immatriculation,
+      subtitle: `${t.chauffeur} — ${t.vitesse} km/h`,
+      coords: t.coords,
+      missionId: t.missionId,
+    }))
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Tableau de bord"
-        description="Vue d'ensemble de votre activité — flotte, missions, finances et alertes"
-        action={{ label: "Nouvelle mission", onClick: () => navigate("/missions") }}
+        description={`Bonjour — ${MORNING}. Vue opérationnelle de votre agence.`}
+        action={{ label: "Nouvelle mission", onClick: () => navigate("/missions?create=1") }}
       />
 
-      <StaggerList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StaggerItem><StatCard title="Véhicules disponibles" value={String(stats.vehiculesDisponibles)} icon={Truck} /></StaggerItem>
+      <StaggerList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <StaggerItem>
+          <StatCard title="Véhicules disponibles" value={String(stats.vehiculesDisponibles)} icon={Truck} />
+        </StaggerItem>
         <StaggerItem>
           <StatCard
             title="Missions en cours"
             value={String(stats.missionsEnCours)}
             icon={Route}
-            trend={{ value: `${stats.missionsEnRetard} en retard`, positive: false }}
+            trend={{ value: `${stats.missionsEnRetard} en retard`, positive: stats.missionsEnRetard === 0 }}
           />
         </StaggerItem>
         <StaggerItem>
-          <StatCard title="Revenus du mois" value={formatCurrency(stats.revenusMois)} icon={TrendingUp} trend={{ value: "Données live", positive: true }} />
+          <StatCard
+            title="Revenus du mois"
+            value={formatCurrency(stats.revenusMois)}
+            icon={TrendingUp}
+            description={`${stats.missionsLivreesMois} mission${stats.missionsLivreesMois > 1 ? "s" : ""} livrée${stats.missionsLivreesMois > 1 ? "s" : ""}`}
+          />
         </StaggerItem>
         <StaggerItem>
-          <StatCard title="Marge nette" value={formatCurrency(marge)} icon={TrendingDown} description={`Dépenses : ${formatCurrency(stats.depensesMois)}`} />
+          <StatCard
+            title="Marge nette"
+            value={formatCurrency(marge)}
+            icon={TrendingDown}
+            trend={{ value: marge >= 0 ? "Positive" : "Négative", positive: marge >= 0 }}
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard
+            title="Carburant"
+            value={formatCurrency(stats.carburantMois)}
+            icon={Fuel}
+            description="Ce mois"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <button type="button" className="w-full text-left" onClick={() => navigate("/documents")}>
+            <StatCard
+              title="Docs à renouveler"
+              value={String(stats.documentsExpirant)}
+              icon={FileWarning}
+              trend={
+                stats.documentsExpirant > 0
+                  ? { value: "Action requise", positive: false }
+                  : { value: "À jour", positive: true }
+              }
+            />
+          </button>
         </StaggerItem>
       </StaggerList>
 
@@ -59,15 +106,22 @@ export function DashboardPage() {
         <Card className="lg:col-span-4">
           <CardHeader>
             <CardTitle>Revenus vs Dépenses</CardTitle>
-            <CardDescription>Évolution sur 6 mois (millions XOF)</CardDescription>
+            <CardDescription>6 derniers mois — données live (missions livrées + carburant)</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={revenueChart}>
+              <BarChart data={stats.revenueChart}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="mois" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                <YAxis className="text-xs" unit="M" />
+                <Tooltip
+                  formatter={(value: number) => [`${value} M XOF`, ""]}
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                  }}
+                />
                 <Bar dataKey="revenus" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} name="Revenus" />
                 <Bar dataKey="depenses" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Dépenses" />
               </BarChart>
@@ -76,17 +130,25 @@ export function DashboardPage() {
         </Card>
 
         <Card className="lg:col-span-3">
-          <CardHeader>
+          <CardHeader className="flex-row items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="size-4 text-amber-400" />
-              Alertes ({alerts?.length ?? 0})
+              Alertes ({stats.alertes})
             </CardTitle>
+            {stats.alertes > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => navigate(alerts?.[0]?.href ?? "/maintenance")}>
+                Traiter
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="space-y-3 max-h-[320px] overflow-auto">
-            {alerts?.map((alert) => (
+            {alerts?.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">Aucune alerte — tout est sous contrôle.</p>
+            )}
+            {alerts?.slice(0, 8).map((alert) => (
               <button
                 key={alert.id}
-                onClick={() => navigate(alert.type === "mission" ? "/missions" : alert.type === "paiement" ? "/billing" : "/maintenance")}
+                onClick={() => navigate(alert.href ?? "/dashboard")}
                 className="flex w-full items-start gap-3 rounded-lg border p-3 text-left hover:bg-muted/50 transition-colors"
               >
                 <Badge variant={alert.severity === "danger" ? "destructive" : alert.severity === "warning" ? "warning" : "info"}>
@@ -102,37 +164,65 @@ export function DashboardPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2"><Route className="size-4" />Missions récentes</CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/missions")}>Voir tout</Button>
+            <CardTitle className="flex items-center gap-2">
+              <Route className="size-4" />
+              {stats.missionsEnRetard > 0 ? "Missions prioritaires" : "Missions récentes"}
+            </CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/missions")}>
+              Voir tout
+            </Button>
           </CardHeader>
           <CardContent className="space-y-3">
-            {missions?.slice(0, 4).map((m) => (
-              <div key={m.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/30 transition-colors">
+            {recentMissions.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => navigate("/missions")}
+                className="flex w-full items-center justify-between rounded-lg border p-3 text-left hover:bg-muted/30 transition-colors"
+              >
                 <div>
-                  <p className="font-medium">{m.id} — {m.client}</p>
-                  <p className="text-sm text-muted-foreground">{m.depart} → {m.destination}</p>
+                  <p className="font-medium">
+                    {m.id} — {m.client}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {m.depart} → {m.destination} · {m.vehicule}
+                  </p>
                 </div>
                 <MissionStatusBadge status={m.statut} />
-              </div>
+              </button>
             ))}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2"><MapPin className="size-4" />Carte GPS</CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/tracking")}>Plein écran</Button>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="size-4" />
+              Carte GPS
+            </CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/tracking")}>
+              Plein écran
+            </Button>
           </CardHeader>
           <CardContent className="space-y-3">
             <TransportMap
               height={220}
               zoom={6}
-              missions={missions?.filter((m) => m.statut !== "livree") ?? []}
+              missions={(missions ?? []).filter((m) => m.statut !== "livree" && m.statut !== "annulee")}
               vehicles={mapVehicles}
             />
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground flex items-center gap-1"><Fuel className="size-3" />Carburant</span>
-              <span className="font-semibold">{formatCurrency(stats.carburantMois)}</span>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="flex justify-between rounded-md border px-3 py-2">
+                <span className="text-muted-foreground">En route</span>
+                <span className="font-semibold">{stats.missionsEnCours}</span>
+              </div>
+              <div className="flex justify-between rounded-md border px-3 py-2">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Fuel className="size-3" />
+                  Carburant
+                </span>
+                <span className="font-semibold">{formatCurrency(stats.carburantMois)}</span>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -9,22 +9,35 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useMaintenance, useMaintenanceMutations } from "@/hooks/use-data"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useMaintenance, useMaintenanceMutations, useVehicles } from "@/hooks/use-data"
 import { formatDate } from "@/lib/utils"
 import { downloadCSV } from "@/lib/export"
 
 export function MaintenancePage() {
   const { data: items } = useMaintenance()
+  const { data: vehicles } = useVehicles()
   const { create, complete } = useMaintenanceMutations()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ vehicule: "", type: "Vidange", echeance: "", kmRestant: 1000 })
+  const [form, setForm] = useState({ vehicleId: "", type: "Vidange", echeance: "", kmRestant: 1000 })
 
   const critical = items?.filter((m) => m.priorite === "critique").length ?? 0
 
   const handlePlan = async () => {
-    if (!form.vehicule) return
-    await create.mutateAsync({ ...form, priorite: form.kmRestant === 0 ? "critique" : "haute" })
-    toast.success("Intervention planifiée")
+    const vehicle = vehicles?.find((v) => v.id === form.vehicleId)
+    if (!vehicle) {
+      toast.error("Sélectionnez un véhicule")
+      return
+    }
+    await create.mutateAsync({
+      vehicleId: vehicle.id,
+      vehicule: vehicle.immatriculation,
+      type: form.type,
+      echeance: form.echeance,
+      kmRestant: form.kmRestant,
+      priorite: form.kmRestant === 0 ? "critique" : "haute",
+    })
+    toast.success(`Intervention planifiée — ${vehicle.immatriculation}`)
     setOpen(false)
   }
 
@@ -85,7 +98,17 @@ export function MaintenancePage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Planifier une intervention</DialogTitle></DialogHeader>
           <div className="grid gap-3">
-            <div><Label>Véhicule</Label><Input value={form.vehicule} onChange={(e) => setForm({ ...form, vehicule: e.target.value })} placeholder="CI-0000-XX" /></div>
+            <div>
+              <Label>Véhicule</Label>
+              <Select value={form.vehicleId} onValueChange={(v) => setForm({ ...form, vehicleId: v })}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Choisir un véhicule..." /></SelectTrigger>
+                <SelectContent>
+                  {vehicles?.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>{v.immatriculation} — {v.type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div><Label>Type</Label><Input value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} /></div>
             <div><Label>Échéance</Label><Input type="date" value={form.echeance} onChange={(e) => setForm({ ...form, echeance: e.target.value })} /></div>
             <div><Label>Km restant</Label><Input type="number" value={form.kmRestant} onChange={(e) => setForm({ ...form, kmRestant: +e.target.value })} /></div>

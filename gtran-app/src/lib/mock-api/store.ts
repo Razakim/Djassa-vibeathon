@@ -1,7 +1,7 @@
 import type { AppStore } from "@/types/entities"
 import { createSeedStore } from "./seed"
 
-const STORAGE_KEY = "gtran-store-v1"
+const STORAGE_KEY = "gtran-store-v2"
 
 export function getStore(): AppStore {
   const raw = localStorage.getItem(STORAGE_KEY)

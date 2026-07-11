@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
+import { useSearchParams } from "react-router-dom"
 import { Navigation, MapPin, Route } from "lucide-react"
 import { motion } from "motion/react"
 import { PageHeader } from "@/components/shared/page-header"
@@ -19,12 +20,21 @@ const STATUS_OPTIONS: { value: MissionStatus; label: string }[] = [
 ]
 
 export function TrackingPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const { data: missions } = useMissions()
   const { data: tracking } = useTracking()
   const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null)
   const [showRoutes, setShowRoutes] = useState(true)
   const [showCities, setShowCities] = useState(true)
   const [statusFilter, setStatusFilter] = useState<MissionStatus[]>(["planifiee", "en_cours", "en_retard"])
+
+  useEffect(() => {
+    const missionParam = searchParams.get("mission")
+    if (missionParam) {
+      setSelectedMissionId(missionParam)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   const activeMissions = useMemo(
     () => (missions ?? []).filter((m) => statusFilter.includes(m.statut)),

@@ -82,7 +82,7 @@ export function Sidebar() {
                         <NavLink
                           key={item.href}
                           to={item.href}
-                          end={item.href === "/"}
+                          end={item.href === "/dashboard"}
                           className={({ isActive }) =>
                             cn(
                               "flex items-center rounded-lg text-sm transition-colors",

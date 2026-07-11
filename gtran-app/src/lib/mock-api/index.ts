@@ -1,5 +1,14 @@
 import { uid, simulateDelay, getStore, updateStore } from "./store"
-import { buildRoute } from "@/lib/geo/cities"
+import { computeAlerts } from "./alerts-engine"
+import {
+  createMissionInStore,
+  deleteMissionInStore,
+  transitionMissionInStore,
+  refreshStoreAlerts,
+  type MissionCreateInput,
+} from "./mission-workflow"
+import { deriveTracking } from "./tracking"
+import { processInvoiceReminders } from "./invoice-reminders"
 import type {
   AppStore,
   AuthAccount,
@@ -29,6 +38,10 @@ type CollectionKey = {
   messages: Message
 }
 
+function withFreshAlerts(store: AppStore): AppStore {
+  return refreshStoreAlerts(store)
+}
+
 async function list<K extends keyof CollectionKey>(key: K, agenceId?: string): Promise<CollectionKey[K][]> {
   await simulateDelay()
   const items = getStore()[key] as CollectionKey[K][]
@@ -42,10 +55,12 @@ async function create<K extends keyof CollectionKey>(
 ): Promise<CollectionKey[K]> {
   await simulateDelay()
   const entry = { ...item, id: item.id ?? uid(String(key)) } as CollectionKey[K]
-  updateStore((store) => ({
-    ...store,
-    [key]: [...(store[key] as CollectionKey[K][]), entry],
-  }))
+  updateStore((store) =>
+    withFreshAlerts({
+      ...store,
+      [key]: [...(store[key] as CollectionKey[K][]), entry],
+    })
+  )
   return entry
 }
 
@@ -62,17 +77,19 @@ async function update<K extends keyof CollectionKey>(
       updated = { ...item, ...patch }
       return updated
     })
-    return { ...store, [key]: items }
+    return withFreshAlerts({ ...store, [key]: items })
   })
   return updated
 }
 
 async function remove<K extends keyof CollectionKey>(key: K, id: string) {
   await simulateDelay()
-  updateStore((store) => ({
-    ...store,
-    [key]: (store[key] as CollectionKey[K][]).filter((item) => item.id !== id),
-  }))
+  updateStore((store) =>
+    withFreshAlerts({
+      ...store,
+      [key]: (store[key] as CollectionKey[K][]).filter((item) => item.id !== id),
+    })
+  )
 }
 
 // Vehicles
@@ -87,14 +104,37 @@ export const createDriver = (data: Omit<Driver, "id">) => create("drivers", data
 export const updateDriver = (id: string, patch: Partial<Driver>) => update("drivers", id, patch)
 export const deleteDriver = (id: string) => remove("drivers", id)
 
-// Missions
+// Missions — workflow métier
 export const fetchMissions = (agenceId?: string) => list("missions", agenceId)
-export const createMission = async (data: Omit<Mission, "id" | "route" | "progress">) => {
-  const route = buildRoute(data.depart, data.destination)
-  return create("missions", { ...data, route, progress: 0 })
+
+export async function createMission(data: Omit<MissionCreateInput, "agenceId"> & { agenceId: string }) {
+  await simulateDelay()
+  let created!: Mission
+  updateStore((store) => {
+    const next = createMissionInStore(store, data)
+    created = next.missions[next.missions.length - 1]
+    return next
+  })
+  return created
 }
+
+export async function transitionMission(id: string, statut: MissionStatus) {
+  await simulateDelay()
+  let result!: ReturnType<typeof transitionMissionInStore>["result"]
+  updateStore((store) => {
+    const { store: next, result: r } = transitionMissionInStore(store, id, statut)
+    result = r
+    return next
+  })
+  return result
+}
+
 export const updateMission = (id: string, patch: Partial<Mission>) => update("missions", id, patch)
-export const deleteMission = (id: string) => remove("missions", id)
+
+export async function deleteMission(id: string) {
+  await simulateDelay()
+  updateStore((store) => deleteMissionInStore(store, id))
+}
 
 // Documents
 export const fetchDocuments = (agenceId?: string) => list("documents", agenceId)
@@ -102,7 +142,11 @@ export const createDocument = (data: Omit<Document, "id">) => create("documents"
 export const deleteDocument = (id: string) => remove("documents", id)
 
 // Invoices
-export const fetchInvoices = (agenceId?: string) => list("invoices", agenceId)
+export async function fetchInvoices(agenceId?: string) {
+  await simulateDelay()
+  updateStore(processInvoiceReminders)
+  return list("invoices", agenceId)
+}
 export const createInvoice = (data: Omit<Invoice, "id">) => create("invoices", data)
 export const updateInvoice = (id: string, patch: Partial<Invoice>) => update("invoices", id, patch)
 
@@ -113,13 +157,22 @@ export const updatePayment = (id: string, patch: Partial<Payment>) => update("pa
 
 // Maintenance
 export const fetchMaintenance = (agenceId?: string) => list("maintenanceItems", agenceId)
-export const createMaintenance = (data: Omit<MaintenanceItem, "id">) => create("maintenanceItems", data)
-export const updateMaintenance = (id: string, patch: Partial<MaintenanceItem>) => update("maintenanceItems", id, patch)
+export const createMaintenance = async (data: Omit<MaintenanceItem, "id" | "vehicleId"> & { vehicleId?: string }) => {
+  const store = getStore()
+  const vehicleId = data.vehicleId ?? store.vehicles.find((v) => v.immatriculation === data.vehicule)?.id ?? uid("v")
+  return create("maintenanceItems", { ...data, vehicleId })
+}
+export const updateMaintenance = (id: string, patch: Partial<MaintenanceItem>) =>
+  update("maintenanceItems", id, patch)
 export const deleteMaintenance = (id: string) => remove("maintenanceItems", id)
 
 // Fuel
 export const fetchFuelRecords = (agenceId?: string) => list("fuelRecords", agenceId)
-export const createFuelRecord = (data: Omit<FuelRecord, "id">) => create("fuelRecords", data)
+export const createFuelRecord = async (data: Omit<FuelRecord, "id" | "vehicleId"> & { vehicleId?: string }) => {
+  const store = getStore()
+  const vehicleId = data.vehicleId ?? store.vehicles.find((v) => v.immatriculation === data.vehicule)?.id ?? uid("v")
+  return create("fuelRecords", { ...data, vehicleId })
+}
 
 // Employees
 export const fetchEmployees = (agenceId?: string) => list("employees", agenceId)
@@ -134,17 +187,14 @@ export const markMessageRead = (id: string) => update("messages", id, { unread: 
 // Dashboard / misc
 export async function fetchAlerts(agenceId?: string) {
   await simulateDelay()
+  updateStore(processInvoiceReminders)
   const store = getStore()
-  return agenceId ? store.alerts.filter((a) => a.agenceId === agenceId) : store.alerts
+  return agenceId ? computeAlerts(store, agenceId) : computeAlerts(store)
 }
 
 export async function fetchTracking(agenceId?: string) {
   await simulateDelay()
-  const store = getStore()
-  if (!agenceId) return store.trackingVehicles
-  const agencyMissions = store.missions.filter((m) => m.agenceId === agenceId)
-  const missionIds = new Set(agencyMissions.map((m) => m.id))
-  return store.trackingVehicles.filter((t) => !t.missionId || missionIds.has(t.missionId))
+  return deriveTracking(getStore(), agenceId)
 }
 
 export async function fetchAgences() {
@@ -198,10 +248,17 @@ export async function sendInvoiceReminder(invoiceId: string, agenceId: string) {
   const store = getStore()
   const invoice = store.invoices.find((i) => i.id === invoiceId)
   if (!invoice) throw new Error("Facture introuvable")
+  const today = new Date().toISOString().slice(0, 10)
+  updateStore((s) => ({
+    ...s,
+    invoices: s.invoices.map((i) =>
+      i.id === invoiceId ? { ...i, lastReminderAt: today } : i
+    ),
+  }))
   return sendMessage({
     from: "Système",
     subject: `Relance paiement — ${invoice.id}`,
-    body: `Relance automatique envoyée à ${invoice.client} pour un montant de ${invoice.montant.toLocaleString("fr-FR")} XOF.`,
+    body: `Relance envoyée à ${invoice.client} pour un montant de ${invoice.montant.toLocaleString("fr-FR")} XOF.`,
     time: "À l'instant",
     unread: true,
     agenceId,
@@ -243,4 +300,4 @@ export async function searchGlobal(query: string, agenceId?: string) {
   }
 }
 
-export type { AppStore, MissionStatus, PaymentStatus, VehicleStatus }
+export type { AppStore, MissionStatus, PaymentStatus, VehicleStatus, MissionCreateInput }

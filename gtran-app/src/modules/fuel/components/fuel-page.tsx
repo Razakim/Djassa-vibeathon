@@ -9,24 +9,39 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useFuelRecords, useFuelMutations } from "@/hooks/use-data"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useFuelRecords, useFuelMutations, useVehicles } from "@/hooks/use-data"
 import { formatCurrency, formatDate } from "@/lib/utils"
 
 export function FuelPage() {
   const { data: records } = useFuelRecords()
+  const { data: vehicles } = useVehicles()
   const { create } = useFuelMutations()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ vehicule: "", station: "", litres: 0, montant: 0, conso: 30 })
+  const [form, setForm] = useState({ vehicleId: "", station: "", litres: 0, montant: 0, conso: 30 })
 
   const total = records?.reduce((s, f) => s + f.montant, 0) ?? 0
   const anomalies = records?.filter((f) => f.anomalie) ?? []
   const avgConso = records?.length ? (records.reduce((s, f) => s + f.conso, 0) / records.length).toFixed(1) : "0"
 
   const handleAdd = async () => {
-    if (!form.vehicule) return
+    const vehicle = vehicles?.find((v) => v.id === form.vehicleId)
+    if (!vehicle) {
+      toast.error("Sélectionnez un véhicule")
+      return
+    }
     const anomalie = form.conso > 38
-    await create.mutateAsync({ ...form, anomalie, date: new Date().toISOString().slice(0, 10) })
-    toast.success(anomalie ? "Plein enregistré — anomalie détectée" : "Plein enregistré")
+    await create.mutateAsync({
+      vehicleId: vehicle.id,
+      vehicule: vehicle.immatriculation,
+      station: form.station,
+      litres: form.litres,
+      montant: form.montant,
+      conso: form.conso,
+      anomalie,
+      date: new Date().toISOString().slice(0, 10),
+    })
+    toast.success(anomalie ? `Plein enregistré — ${vehicle.immatriculation} (anomalie)` : `Plein enregistré — ${vehicle.immatriculation}`)
     setOpen(false)
   }
 
@@ -75,7 +90,17 @@ export function FuelPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Enregistrer un plein</DialogTitle></DialogHeader>
           <div className="grid gap-3">
-            <div><Label>Véhicule</Label><Input value={form.vehicule} onChange={(e) => setForm({ ...form, vehicule: e.target.value })} /></div>
+            <div>
+              <Label>Véhicule</Label>
+              <Select value={form.vehicleId} onValueChange={(v) => setForm({ ...form, vehicleId: v })}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Choisir un véhicule..." /></SelectTrigger>
+                <SelectContent>
+                  {vehicles?.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>{v.immatriculation} — {v.type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div><Label>Station</Label><Input value={form.station} onChange={(e) => setForm({ ...form, station: e.target.value })} /></div>
             <div className="grid grid-cols-3 gap-3">
               <div><Label>Litres</Label><Input type="number" value={form.litres} onChange={(e) => setForm({ ...form, litres: +e.target.value })} /></div>

@@ -80,7 +80,7 @@ export function MobileSidebar({ open, onClose }: MobileSidebarProps) {
                           <NavLink
                             key={item.href}
                             to={item.href}
-                            end={item.href === "/"}
+                            end={item.href === "/dashboard"}
                             onClick={onClose}
                             className={({ isActive }) =>
                               cn(
