@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useTenant } from "@/lib/tenant"
-import * as api from "@/lib/mock-api"
+import * as api from "@/lib/api"
 import type { Mission } from "@/types/entities"
 import {
   buildRevenueChart,

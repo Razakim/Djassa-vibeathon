@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { aiSuggestions } from "@/lib/mock-data"
-import { answerAiQuery } from "@/lib/ai-assist-engine"
+import { queryAiAssist } from "@/lib/api"
 import { useTenant } from "@/lib/tenant"
 
 interface Message {
@@ -39,7 +39,7 @@ export function AiAssistPage() {
     }
   }, [messages])
 
-  const handleSend = (text?: string) => {
+  const handleSend = async (text?: string) => {
     const query = text ?? input
     if (!query.trim()) return
 
@@ -48,12 +48,14 @@ export function AiAssistPage() {
     setInput("")
     setLoading(true)
 
-    // Simulate slight AI delay for realism
-    setTimeout(() => {
-      const answer = answerAiQuery(query, agenceId)
+    try {
+      const { answer } = await queryAiAssist(query, agenceId)
       setMessages((prev) => [...prev, { role: "assistant", content: answer }])
+    } catch {
+      toast.error("Impossible de contacter l'assistant")
+    } finally {
       setLoading(false)
-    }, 600)
+    }
   }
 
   const handleMic = () => {
