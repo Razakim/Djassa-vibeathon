@@ -1,0 +1,8 @@
+[project]
+name = "gtran-api"
+version = "0.1.0"
+description = "Gtran — API de gestion transport & logistique"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
