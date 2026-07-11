@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import TypeVar
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.auth import create_access_token, get_current_user, hash_password, verify_password
 from app.domain.ai_assist import answer_ai_query
+from app.domain.analytics import compute_analytics, compute_dashboard_stats
 from app.domain.mission_workflow import (
     create_mission_in_store,
     delete_mission_in_store,
@@ -15,6 +19,7 @@ from app.domain.tracking import derive_tracking, process_invoice_reminders
 from app.schemas import (
     AiQueryRequest,
     AiQueryResponse,
+    AppStore,
     AuthResponse,
     LoginRequest,
     MissionCreateInput,
@@ -26,10 +31,22 @@ from app.services import create_item, delete_item, filter_agence, list_collectio
 from app.store import get_store, update_store
 
 router = APIRouter(prefix="/api/v1")
+T = TypeVar("T")
 
 
-def _agence(q: str | None) -> str | None:
-    return q
+def _mutate(updater: Callable[[AppStore], AppStore]) -> AppStore:
+    try:
+        return update_store(updater)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+def _mutate_item(updater: Callable[[AppStore], tuple[AppStore, T]]) -> T:
+    try:
+        _, item = update_store(updater)
+        return item
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 # --- Auth ---
@@ -37,6 +54,11 @@ def _agence(q: str | None) -> str | None:
 @router.get("/health")
 def health():
     return {"status": "ok", "service": "gtran-api"}
+
+
+@router.get("/auth/me", response_model=UserOut)
+def get_me(user: UserOut = Depends(get_current_user)):
+    return user
 
 
 @router.post("/auth/login", response_model=AuthResponse)
@@ -63,6 +85,7 @@ def register(body: RegisterRequest):
             "entrepriseId": "ent-1",
         }
         from app.schemas import AuthAccount
+
         acc = AuthAccount.model_validate(account)
         return store.model_copy(update={"accounts": [*store.accounts, acc]})
 
@@ -111,18 +134,17 @@ def get_vehicles(agence_id: str | None = Query(None, alias="agenceId"), user: Us
 
 @router.post("/vehicles")
 def post_vehicle(data: dict, user: UserOut = Depends(get_current_user)):
-    return update_store(lambda s: create_item(s, "vehicles", data)).vehicles[-1]
+    return _mutate(lambda s: create_item(s, "vehicles", data)).vehicles[-1]
 
 
 @router.patch("/vehicles/{item_id}")
 def patch_vehicle(item_id: str, data: dict, user: UserOut = Depends(get_current_user)):
-    store, item = update_store(lambda s: update_item(s, "vehicles", item_id, data))
-    return item
+    return _mutate_item(lambda s: update_item(s, "vehicles", item_id, data))
 
 
 @router.delete("/vehicles/{item_id}", status_code=204)
 def del_vehicle(item_id: str, user: UserOut = Depends(get_current_user)):
-    update_store(lambda s: delete_item(s, "vehicles", item_id))
+    _mutate(lambda s: delete_item(s, "vehicles", item_id))
 
 
 # --- Drivers ---
@@ -134,18 +156,17 @@ def get_drivers(agence_id: str | None = Query(None, alias="agenceId"), user: Use
 
 @router.post("/drivers")
 def post_driver(data: dict, user: UserOut = Depends(get_current_user)):
-    return update_store(lambda s: create_item(s, "drivers", data)).drivers[-1]
+    return _mutate(lambda s: create_item(s, "drivers", data)).drivers[-1]
 
 
 @router.patch("/drivers/{item_id}")
 def patch_driver(item_id: str, data: dict, user: UserOut = Depends(get_current_user)):
-    _, item = update_store(lambda s: update_item(s, "drivers", item_id, data))
-    return item
+    return _mutate_item(lambda s: update_item(s, "drivers", item_id, data))
 
 
 @router.delete("/drivers/{item_id}", status_code=204)
 def del_driver(item_id: str, user: UserOut = Depends(get_current_user)):
-    update_store(lambda s: delete_item(s, "drivers", item_id))
+    _mutate(lambda s: delete_item(s, "drivers", item_id))
 
 
 # --- Missions ---
@@ -159,8 +180,8 @@ def get_missions(agence_id: str | None = Query(None, alias="agenceId"), user: Us
 def post_mission(data: MissionCreateInput, user: UserOut = Depends(get_current_user)):
     try:
         store = update_store(lambda s: create_mission_in_store(s, data))
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     return store.missions[-1]
 
 
@@ -175,8 +196,8 @@ def mission_transition(mission_id: str, body: MissionTransitionRequest, user: Us
 
     try:
         update_store(updater)
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     return holder["result"]
 
 
@@ -184,16 +205,15 @@ def mission_transition(mission_id: str, body: MissionTransitionRequest, user: Us
 def patch_mission(mission_id: str, data: dict, user: UserOut = Depends(get_current_user)):
     if data.get("statut"):
         raise HTTPException(400, "Utilisez POST /missions/{id}/transition pour changer le statut")
-    _, item = update_store(lambda s: update_item(s, "missions", mission_id, data))
-    return item
+    return _mutate_item(lambda s: update_item(s, "missions", mission_id, data))
 
 
 @router.delete("/missions/{mission_id}", status_code=204)
 def del_mission(mission_id: str, user: UserOut = Depends(get_current_user)):
     try:
         update_store(lambda s: delete_mission_in_store(s, mission_id))
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 # --- Documents ---
@@ -205,12 +225,12 @@ def get_documents(agence_id: str | None = Query(None, alias="agenceId"), user: U
 
 @router.post("/documents")
 def post_document(data: dict, user: UserOut = Depends(get_current_user)):
-    return update_store(lambda s: create_item(s, "documents", data)).documents[-1]
+    return _mutate(lambda s: create_item(s, "documents", data)).documents[-1]
 
 
 @router.delete("/documents/{item_id}", status_code=204)
 def del_document(item_id: str, user: UserOut = Depends(get_current_user)):
-    update_store(lambda s: delete_item(s, "documents", item_id))
+    _mutate(lambda s: delete_item(s, "documents", item_id))
 
 
 # --- Invoices ---
@@ -223,27 +243,32 @@ def get_invoices(agence_id: str | None = Query(None, alias="agenceId"), user: Us
 
 @router.post("/invoices")
 def post_invoice(data: dict, user: UserOut = Depends(get_current_user)):
-    return update_store(lambda s: create_item(s, "invoices", data)).invoices[-1]
+    return _mutate(lambda s: create_item(s, "invoices", data)).invoices[-1]
 
 
 @router.patch("/invoices/{item_id}")
 def patch_invoice(item_id: str, data: dict, user: UserOut = Depends(get_current_user)):
-    _, item = update_store(lambda s: update_item(s, "invoices", item_id, data))
-    return item
+    return _mutate_item(lambda s: update_item(s, "invoices", item_id, data))
 
 
 @router.post("/invoices/{invoice_id}/remind")
-def remind_invoice(invoice_id: str, agence_id: str = Query(..., alias="agenceId"), user: UserOut = Depends(get_current_user)):
+def remind_invoice(
+    invoice_id: str,
+    agence_id: str = Query(..., alias="agenceId"),
+    user: UserOut = Depends(get_current_user),
+):
     store = get_store()
     inv = next((i for i in store.invoices if i.id == invoice_id), None)
     if not inv:
         raise HTTPException(404, "Facture introuvable")
     from datetime import datetime
+
     today = datetime.utcnow().strftime("%Y-%m-%d")
 
     def updater(s):
         invoices = [i.model_copy(update={"lastReminderAt": today}) if i.id == invoice_id else i for i in s.invoices]
         from app.schemas import Message
+
         msg = Message(
             id=uid("msg"),
             **{
@@ -270,13 +295,12 @@ def get_payments(agence_id: str | None = Query(None, alias="agenceId"), user: Us
 
 @router.post("/payments")
 def post_payment(data: dict, user: UserOut = Depends(get_current_user)):
-    return update_store(lambda s: create_item(s, "payments", data)).payments[-1]
+    return _mutate(lambda s: create_item(s, "payments", data)).payments[-1]
 
 
 @router.post("/payments/{payment_id}/release-escrow")
 def release_escrow(payment_id: str, user: UserOut = Depends(get_current_user)):
-    _, item = update_store(lambda s: update_item(s, "payments", payment_id, {"statut": "paye"}))
-    return item
+    return _mutate_item(lambda s: update_item(s, "payments", payment_id, {"statut": "paye"}))
 
 
 # --- Maintenance ---
@@ -293,18 +317,17 @@ def post_maintenance(data: dict, user: UserOut = Depends(get_current_user)):
         v = next((x for x in store.vehicles if x.immatriculation == data["vehicule"]), None)
         if v:
             data["vehicleId"] = v.id
-    return update_store(lambda s: create_item(s, "maintenanceItems", data)).maintenanceItems[-1]
+    return _mutate(lambda s: create_item(s, "maintenanceItems", data)).maintenanceItems[-1]
 
 
 @router.patch("/maintenance/{item_id}")
 def patch_maintenance(item_id: str, data: dict, user: UserOut = Depends(get_current_user)):
-    _, item = update_store(lambda s: update_item(s, "maintenanceItems", item_id, data))
-    return item
+    return _mutate_item(lambda s: update_item(s, "maintenanceItems", item_id, data))
 
 
 @router.delete("/maintenance/{item_id}", status_code=204)
 def del_maintenance(item_id: str, user: UserOut = Depends(get_current_user)):
-    update_store(lambda s: delete_item(s, "maintenanceItems", item_id))
+    _mutate(lambda s: delete_item(s, "maintenanceItems", item_id))
 
 
 # --- Fuel ---
@@ -321,7 +344,7 @@ def post_fuel(data: dict, user: UserOut = Depends(get_current_user)):
         v = next((x for x in store.vehicles if x.immatriculation == data["vehicule"]), None)
         if v:
             data["vehicleId"] = v.id
-    return update_store(lambda s: create_item(s, "fuelRecords", data)).fuelRecords[-1]
+    return _mutate(lambda s: create_item(s, "fuelRecords", data)).fuelRecords[-1]
 
 
 # --- Employees ---
@@ -333,13 +356,12 @@ def get_employees(agence_id: str | None = Query(None, alias="agenceId"), user: U
 
 @router.post("/employees")
 def post_employee(data: dict, user: UserOut = Depends(get_current_user)):
-    return update_store(lambda s: create_item(s, "employees", data)).employees[-1]
+    return _mutate(lambda s: create_item(s, "employees", data)).employees[-1]
 
 
 @router.patch("/employees/{item_id}")
 def patch_employee(item_id: str, data: dict, user: UserOut = Depends(get_current_user)):
-    _, item = update_store(lambda s: update_item(s, "employees", item_id, data))
-    return item
+    return _mutate_item(lambda s: update_item(s, "employees", item_id, data))
 
 
 # --- Messages ---
@@ -351,13 +373,12 @@ def get_messages(agence_id: str | None = Query(None, alias="agenceId"), user: Us
 
 @router.post("/messages")
 def post_message(data: dict, user: UserOut = Depends(get_current_user)):
-    return update_store(lambda s: create_item(s, "messages", data)).messages[-1]
+    return _mutate(lambda s: create_item(s, "messages", data)).messages[-1]
 
 
 @router.patch("/messages/{item_id}/read")
 def read_message(item_id: str, user: UserOut = Depends(get_current_user)):
-    _, item = update_store(lambda s: update_item(s, "messages", item_id, {"unread": False}))
-    return item
+    return _mutate_item(lambda s: update_item(s, "messages", item_id, {"unread": False}))
 
 
 # --- Derived ---
@@ -374,8 +395,23 @@ def get_tracking(agence_id: str | None = Query(None, alias="agenceId"), user: Us
 
 
 @router.get("/search")
-def global_search(q: str = Query(..., min_length=2), agence_id: str | None = Query(None, alias="agenceId"), user: UserOut = Depends(get_current_user)):
+def global_search(
+    q: str = Query(..., min_length=2),
+    agence_id: str | None = Query(None, alias="agenceId"),
+    user: UserOut = Depends(get_current_user),
+):
     return search_global(get_store(), q, agence_id)
+
+
+@router.get("/analytics")
+def get_analytics(agence_id: str | None = Query(None, alias="agenceId"), user: UserOut = Depends(get_current_user)):
+    return compute_analytics(get_store(), agence_id)
+
+
+@router.get("/dashboard/stats")
+def get_dashboard_stats(agence_id: str | None = Query(None, alias="agenceId"), user: UserOut = Depends(get_current_user)):
+    store = update_store(process_invoice_reminders)
+    return compute_dashboard_stats(store, agence_id)
 
 
 # --- Payment gateways ---
@@ -391,6 +427,7 @@ def test_gateway(method: str, user: UserOut = Depends(get_current_user)):
         gw = dict(s.paymentGateways)
         gw[method] = True
         return s.model_copy(update={"paymentGateways": gw})
+
     update_store(updater)
     return {"method": method, "connected": True}
 
@@ -408,5 +445,6 @@ def ai_query(body: AiQueryRequest, user: UserOut = Depends(get_current_user)):
 @router.post("/admin/reset")
 def admin_reset(user: UserOut = Depends(get_current_user)):
     from app.store import reset_store
+
     reset_store()
     return {"ok": True}

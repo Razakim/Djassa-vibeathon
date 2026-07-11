@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { aiSuggestions } from "@/lib/mock-data"
-import { answerAiQuery } from "@/lib/ai-assist-engine"
+import { queryAiAssist } from "@/lib/api"
 import { useTenant } from "@/lib/tenant"
 
 interface Message {
@@ -31,16 +31,19 @@ export function AiAssistPage() {
   const [input, setInput] = useState("")
   const [listening, setListening] = useState(false)
 
-  const handleSend = (text?: string) => {
+  const handleSend = async (text?: string) => {
     const query = text ?? input
     if (!query.trim()) return
 
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: query },
-      { role: "assistant", content: answerAiQuery(query, agenceId) },
-    ])
+    setMessages((prev) => [...prev, { role: "user", content: query }])
     setInput("")
+
+    try {
+      const { answer } = await queryAiAssist(query, agenceId)
+      setMessages((prev) => [...prev, { role: "assistant", content: answer }])
+    } catch {
+      toast.error("Impossible de contacter l'assistant")
+    }
   }
 
   const handleMic = () => {

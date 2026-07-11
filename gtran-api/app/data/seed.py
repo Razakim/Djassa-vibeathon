@@ -167,4 +167,11 @@ def create_seed_store() -> AppStore:
         MaintenanceItem(id="m-b1", vehicleId="v-b1", vehicule="CI-2201-BK", type="Vidange", echeance="2026-07-25", kmRestant=400, priorite="haute", agenceId=ag2)
     )
 
+    store.paymentGateways = {
+        "Wave": False,
+        "Orange Money": False,
+        "CinetPay": False,
+        "Séquestre": True,
+    }
+
     return refresh_store_alerts(store)
